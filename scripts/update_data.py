@@ -5,12 +5,10 @@ import urllib.error
 
 API_TOKEN = os.environ["BITCOIN_DATA_API_TOKEN"]
 
-CANDIDATE_ENDPOINTS = [
-    "supply-in-profit-percent",
-    "supply-profit",
-    "utxos-in-profit",
-    "supply-in-profit",
-    "percent-supply-in-profit"
+ENDPOINT = "supply-profit"
+
+DATE_KEYS = [
+    "d", "date", "day", "timestamp", "time", "datetime"
 ]
 
 def get_json(url):
@@ -20,61 +18,88 @@ def get_json(url):
     with urllib.request.urlopen(request, timeout=30) as response:
         return json.loads(response.read().decode())
 
+def find_date(row):
+    for key in DATE_KEYS:
+        if key in row:
+            return row[key]
+
+    for key, value in row.items():
+        if isinstance(value, str) and ("-" in value or ":" in value):
+            return value
+
+    return None
+
+def find_value(row, date_key=None):
+    for key, value in row.items():
+        if key == date_key:
+            continue
+
+        if isinstance(value, (int, float)):
+            return float(value)
+
+        if isinstance(value, str):
+            try:
+                return float(value)
+            except ValueError:
+                continue
+
+    return None
+
 def normalize(rows):
     result = []
 
     for row in rows:
-        date = row.get("d") or row.get("date")
-        value = (
-            row.get("supply_in_profit_percent")
-            or row.get("supplyProfitPercent")
-            or row.get("percent_supply_in_profit")
-            or row.get("utxos_in_profit")
-            or row.get("value")
-            or row.get("v")
-        )
+        if not isinstance(row, dict):
+            continue
+
+        date = find_date(row)
+        value = find_value(row)
 
         if date is not None and value is not None:
             result.append({
-                "date": date,
-                "value": float(value)
+                "date": str(date),
+                "value": value
             })
 
     result.sort(key=lambda item: item["date"])
     return result
 
 def main():
-    rows = None
-    used_endpoint = None
+    url = f"https://api.bitcoin-data.com/v1/{ENDPOINT}?token={API_TOKEN}"
 
-    for endpoint in CANDIDATE_ENDPOINTS:
-        url = f"https://api.bitcoin-data.com/v1/{endpoint}?token={API_TOKEN}"
-        print(f"Пробуем endpoint: {endpoint}")
+    print(f"Пробуем endpoint: {ENDPOINT}")
 
-        try:
-            raw = get_json(url)
-            print(f"Ответ получен. Тип: {type(raw).__name__}")
+    try:
+        raw = get_json(url)
+    except urllib.error.HTTPError as error:
+        raise Exception(f"API вернул ошибку {error.code} для {ENDPOINT}")
 
-            if isinstance(raw, dict):
-                print("Ключи ответа:", list(raw.keys()))
+    print(f"Ответ получен. Тип: {type(raw).__name__}")
 
-            normalized = normalize(raw)
-            print(f"После нормализации записей: {len(normalized)}")
+    if isinstance(raw, dict):
+        print("Ответ является объектом. Ключи:", list(raw.keys()))
 
-            if len(normalized) > 10:
-                rows = normalized
-                used_endpoint = endpoint
+        for key, value in raw.items():
+            if isinstance(value, list) and len(value) > 0:
+                print(f"Найден список в ключе: {key}")
+                raw = value
                 break
 
-        except urllib.error.HTTPError as error:
-            print(f"HTTP ошибка {error.code} для {endpoint}")
-        except Exception as error:
-            print(f"Ошибка для {endpoint}: {error}")
+    if not isinstance(raw, list) or len(raw) == 0:
+        raise Exception("API вернул неожиданный формат данных.")
 
-    if rows is None:
+    first_row = raw[0]
+    print("Поля первой записи:", list(first_row.keys()))
+    print("Первая запись:", first_row)
+
+    rows = normalize(raw)
+
+    print(f"После нормализации записей: {len(rows)}")
+
+    if len(rows) < 10:
         raise Exception(
-            "Ни один endpoint не подошёл. "
-            "Нужно найти точное название метрики в документации BGeometrics."
+            "Не удалось распознать дату и значение в данных. "
+            "Нужно посмотреть поля первой записи в логе."
         )
 
     os.makedirs("data", exist_ok=True)
@@ -86,7 +111,7 @@ def main():
 
     print(f"Файл создан: {output_path}")
     print(f"Сохранено записей: {len(rows)}")
-    print(f"Использованный endpoint: {used_endpoint}")
+    print(f"Использованный endpoint: {ENDPOINT}")
 
 if __name__ == "__main__":
     main()
