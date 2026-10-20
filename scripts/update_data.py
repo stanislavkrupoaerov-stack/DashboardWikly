@@ -5,7 +5,7 @@ import urllib.error
 
 API_TOKEN = os.environ["BITCOIN_DATA_API_TOKEN"]
 
-ENDPOINT = "supply-profit"
+ENDPOINT = "profit-loss"
 
 DATE_KEYS = [
     "d", "date", "day", "timestamp", "time", "datetime"
