@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BTC Supply in Profit — поиск дна рынка</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #0b0f17;
+      color: #e8edf5;
+    }
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+    h1 { margin: 0 0 10px; }
+    .subtitle { color: #93a0b4; }
+    .panel {
+      background: #121826;
+      border: 1px solid #1e2637;
+      border-radius: 16px;
+      padding: 20px;
+      margin: 20px 0;
+    }
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+    }
+    .kpi {
+      background: #0f1522;
+      border: 1px solid #202a3d;
+      border-radius: 12px;
+      padding: 16px;
+    }
+    .kpi-label { color: #93a0b4; font-size: 14px; }
+    .kpi-value { font-size: 28px; font-weight: bold; margin-top: 6px; }
+    .badge {
+      display: inline-block;
+      margin-top: 10px;
+      padding: 5px 12px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: bold;
+    }
+    .chart-box {
+      position: relative;
+      height: 430px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 15px;
+    }
+    th, td {
+      padding: 10px;
+      border-bottom: 1px solid #202a3d;
+      text-align: left;
+    }
+    th { color: #93a0b4; }
+    .note {
+      border-left: 4px solid #f7931a;
+      background: #161d2c;
+      padding: 14px 18px;
+      border-radius: 8px;
+    }
+    footer {
+      color: #93a0b4;
+      font-size: 13px;
+      padding: 20px 0 40px;
+    }
+    .loading { color: #93a0b4; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>BTC: % предложения в прибыли</h1>
+    <p class="subtitle">
+      Метрика показывает, какая доля Bitcoin-предложения сейчас находится в прибыли.
+      Она особенно полезна для поиска зон капитуляции и потенциального дна рынка.
+    </p>
+
+    <div class="panel">
+      <div class="kpi-grid">
+        <div class="kpi">
+          <div class="kpi-label">Текущее значение</div>
+          <div class="kpi-value" id="currentValue">—</div>
+          <div class="badge" id="currentZone">Загрузка…</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Изменение за 30 дней</div>
+          <div class="kpi-value" id="change30">—</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Минимум за период</div>
+          <div class="kpi-value" id="periodMin">—</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Максимум за период</div>
+          <div class="kpi-value" id="periodMax">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>История метрики</h2>
+      <div class="chart-box">
+        <canvas id="chart"></canvas>
+      </div>
+      <p class="loading" id="status">Загрузка данных…</p>
+    </div>
+
+    <div class="panel">
+      <h2>Как читать метрику</h2>
+      <table>
+        <tr>
+          <th>Зона</th>
+          <th>Состояние рынка</th>
+          <th>Практический вывод</th>
+        </tr>
+        <tr>
+          <td>95–100%</td>
+          <td>Почти весь рынок в профите</td>
+          <td>Зона перегрева, но не автоматический сигнал продавать. В сильном бычьем тренде метрика может долго оставаться высокой.</td>
+        </tr>
+        <tr>
+          <td>80–95%</td>
+          <td>Бычий рынок или поздняя стадия роста</td>
+          <td>Смотрите, растёт ли метрика вместе с ценой. Расхождение — повод для осторожности.</td>
+        </tr>
+        <tr>
+          <td>50–70%</td>
+          <td>Нейтральная или коррекционная фаза</td>
+          <td>Оценивайте глубину коррекции и реакцию покупателей.</td>
+        </tr>
+        <tr>
+          <td>20–50%</td>
+          <td>Значительная часть рынка в убытке</td>
+          <td>Возможная зона откупа, если нет подтверждённого медвежьего тренда.</td>
+        </tr>
+        <tr>
+          <td>0–20%</td>
+          <td>Капитуляция / возможное дно</td>
+          <td>Главная зона для поиска разворота. Нужны подтверждения ценой и другими метриками.</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="panel">
+      <h2>Главный принцип</h2>
+      <div class="note">
+        <strong>Эта метрика ситуативная.</strong><br><br>
+        В начале тренда её рост вместе с ценой — здоровый сигнал. Достижение 95–100% означает перегрев,
+        но не гарантирует немедленную коррекцию: при сильной макро-конъюнктуре в США рынок может долго
+        удерживать большинство держателей в профите.<br><br>
+        Для поиска дна особенно интересны значения около <strong>20–50%</strong>, а значения ниже
+        <strong>20%</strong> часто соответствуют капитуляции. Решение нужно принимать вместе с ценой,
+        трендом, SOPR, MVRV и макро-фоном.
+      </div>
+    </div>
+
+    <footer>
+      Данные: BGeometrics / bitcoin-data.com. Сайт не является инвестиционной рекомендацией.
+    </footer>
+  </div>
+
+<script>
+async function loadData() {
+  const status = document.getElementById("status");
+
+  try {
+    const response = await fetch("data/supply-in-profit.json");
+    const rows = await response.json();
+
+    if (!Array.isArray(rows) || rows.length === 0) {
+      throw new Error("Нет данных");
+    }
+
+    const values = rows.map(r => Number(r.value));
+    const dates = rows.map(r => r.date);
+    const current = values[values.length - 1];
+    const value30 = values[values.length - 31] || values[0];
+    const change30 = current - value30;
+
+    document.getElementById("currentValue").textContent =
+      current.toFixed(2) + "%";
+
+    document.getElementById("change30").textContent =
+      (change30 >= 0 ? "+" : "") + change30.toFixed(2) + " п.п.";
+
+    document.getElementById("periodMin").textContent =
+      Math.min(...values).toFixed(2) + "%";
+
+    document.getElementById("periodMax").textContent =
+      Math.max(...values).toFixed(2) + "%";
+
+    let zoneText = "";
+    let zoneColor = "";
+
+    if (current >= 95) {
+      zoneText = "Перегрев: 95–100%";
+      zoneColor = "#ef4444";
+    } else if (current >= 80) {
+      zoneText = "Бычий рынок: 80–95%";
+      zoneColor = "#f59e0b";
+    } else if (current >= 50) {
+      zoneText = "Нейтрально: 50–70%";
+      zoneColor = "#3b82f6";
+    } else if (current >= 20) {
+      zoneText = "Зона откупа: 20–50%";
+      zoneColor = "#22c55e";
+    } else {
+      zoneText = "Капитуляция: 0–20%";
+      zoneColor = "#a855f7";
+    }
+
+    const badge = document.getElementById("currentZone");
+    badge.textContent = zoneText;
+    badge.style.background = zoneColor + "22";
+    badge.style.color = zoneColor;
+    badge.style.border = "1px solid " + zoneColor;
+
+    new Chart(document.getElementById("chart"), {
+      type: "line",
+      data: {
+        labels: dates,
+        datasets: [{
+          label: "% предложения в прибыли",
+          data: values,
+          borderColor: "#f7931a",
+          backgroundColor: "rgba(247,147,26,0.12)",
+          borderWidth: 2,
+          pointRadius: 0,
+          fill: true,
+          tension: 0.15
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: {
+            min: 0,
+            max: 100,
+            ticks: {
+              callback: value => value + "%"
+            }
+          }
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: context => " " + context.parsed.y.toFixed(2) + "% в прибыли"
+            }
+          }
+        }
+      }
+    });
+
+    status.textContent = "Данные обновлены: " + dates[dates.length - 1];
+
+  } catch (error) {
+    status.textContent =
+      "Данные пока не загружены. Проверьте, что файл data/supply-in-profit.json создан и GitHub Action выполнился успешно.";
+  }
+}
+
+loadData();
+</script>
+</body>
+</html>
