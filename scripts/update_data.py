@@ -83,10 +83,17 @@ def normalize(rows):
         date = find_date(row)
         value = find_value(row)
 
-        if date is not None and value is not None:
+                if date is not None and value is not None:
+            ratio = float(value)
+
+            if ratio <= 0:
+                percent = 0.0
+            else:
+                percent = ratio / (1 + ratio) * 100
+
             result.append({
                 "date": str(date),
-                "value": value
+                "value": round(percent, 4)
             })
 
     result.sort(key=lambda item: item["date"])
