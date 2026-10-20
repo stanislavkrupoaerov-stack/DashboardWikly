@@ -30,9 +30,16 @@ def find_date(row):
     return None
 
 def find_value(row, date_key=None):
-    for key, value in row.items():
-        if key == date_key:
-            continue
+    preferred_keys = []
+
+    for key in row:
+        key_lower = key.lower()
+
+        if "profit" in key_lower or "percent" in key_lower:
+            preferred_keys.append(key)
+
+    for key in preferred_keys:
+        value = row[key]
 
         if isinstance(value, (int, float)):
             return float(value)
@@ -40,6 +47,27 @@ def find_value(row, date_key=None):
         if isinstance(value, str):
             try:
                 return float(value)
+            except ValueError:
+                continue
+
+    for key, value in row.items():
+        key_lower = key.lower()
+
+        if key == date_key:
+            continue
+
+        if key_lower in ["timestamp", "time", "unix", "ts"]:
+            continue
+
+        if isinstance(value, (int, float)):
+            if 0 <= float(value) <= 100:
+                return float(value)
+
+        if isinstance(value, str):
+            try:
+                number = float(value)
+                if 0 <= number <= 100:
+                    return number
             except ValueError:
                 continue
 
