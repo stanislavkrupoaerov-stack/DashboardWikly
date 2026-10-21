@@ -83,7 +83,7 @@ def normalize(rows):
         date = find_date(row)
         value = find_value(row)
 
-                if date is not None and value is not None:
+     if date is not None and value is not None:
             ratio = float(value)
 
             if ratio <= 0:
