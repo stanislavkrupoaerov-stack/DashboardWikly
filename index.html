@@ -173,7 +173,7 @@ async function loadData() {
   const status = document.getElementById("status");
 
   try {
-    const response = await fetch("data/supply-in-profit.json");
+    const response = await fetch("data/supply-in-profit.json?v=" + Date.now());
     const rows = await response.json();
 
     if (!Array.isArray(rows) || rows.length === 0) {
