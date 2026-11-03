@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>BTC Supply in Profit — поиск дна рынка</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
   <style>
     body {
       margin: 0;
@@ -176,11 +177,11 @@ async function loadData() {
     const response = await fetch("data/supply-in-profit.json?v=" + Date.now());
     const rows = await response.json();
 
-if (!Array.isArray(rows) || rows.length === 0) {
-  throw new Error("Нет данных");
-}
+    if (!Array.isArray(rows) || rows.length === 0) {
+      throw new Error("Нет данных");
+    }
 
-rows.sort((a, b) => new Date(a.date) - new Date(b.date));
+    rows.sort((a, b) => new Date(a.date) - new Date(b.date));
 
     const values = rows.map(r => Number(r.value));
     const dates = rows.map(r => r.date);
@@ -257,7 +258,23 @@ rows.sort((a, b) => new Date(a.date) - new Date(b.date));
           legend: { display: false },
           tooltip: {
             callbacks: {
+              title: items => items[0].label,
               label: context => " " + context.parsed.y.toFixed(2) + "% в прибыли"
+            }
+          },
+          zoom: {
+            pan: {
+              enabled: true,
+              mode: "x"
+            },
+            zoom: {
+              wheel: {
+                enabled: true
+              },
+              pinch: {
+                enabled: true
+              },
+              mode: "x"
             }
           }
         }
