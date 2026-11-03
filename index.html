@@ -52,6 +52,12 @@
       position: relative;
       height: 430px;
     }
+    .chart-controls {
+      margin-top: 12px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
     table {
       width: 100%;
       border-collapse: collapse;
@@ -112,6 +118,15 @@
       <div class="chart-box">
         <canvas id="chart"></canvas>
       </div>
+
+      <div class="chart-controls">
+        <button id="panLeft" type="button">← Раньше</button>
+        <button id="panRight" type="button">Позже →</button>
+        <button id="zoomIn" type="button">+ Приблизить</button>
+        <button id="zoomOut" type="button">− Отдалить</button>
+        <button id="resetZoom" type="button">Сбросить</button>
+      </div>
+
       <p class="loading" id="status">Загрузка данных…</p>
     </div>
 
@@ -227,7 +242,7 @@ async function loadData() {
     badge.style.color = zoneColor;
     badge.style.border = "1px solid " + zoneColor;
 
-    new Chart(document.getElementById("chart"), {
+    const btcChart = new Chart(document.getElementById("chart"), {
       type: "line",
       data: {
         labels: dates,
@@ -238,6 +253,8 @@ async function loadData() {
           backgroundColor: "rgba(247,147,26,0.12)",
           borderWidth: 2,
           pointRadius: 0,
+          pointHoverRadius: 5,
+          pointHitRadius: 20,
           fill: true,
           tension: 0.15
         }]
@@ -245,6 +262,11 @@ async function loadData() {
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        interaction: {
+          mode: "nearest",
+          axis: "x",
+          intersect: false
+        },
         scales: {
           y: {
             min: 0,
@@ -280,6 +302,26 @@ async function loadData() {
         }
       }
     });
+
+    document.getElementById("panLeft").onclick = () => {
+      btcChart.pan({ x: -150 }, undefined, "none");
+    };
+
+    document.getElementById("panRight").onclick = () => {
+      btcChart.pan({ x: 150 }, undefined, "none");
+    };
+
+    document.getElementById("zoomIn").onclick = () => {
+      btcChart.zoom(1.25);
+    };
+
+    document.getElementById("zoomOut").onclick = () => {
+      btcChart.zoom(0.8);
+    };
+
+    document.getElementById("resetZoom").onclick = () => {
+      btcChart.resetZoom();
+    };
 
     status.textContent = "Данные обновлены: " + dates[dates.length - 1];
 
