@@ -176,9 +176,11 @@ async function loadData() {
     const response = await fetch("data/supply-in-profit.json?v=" + Date.now());
     const rows = await response.json();
 
-    if (!Array.isArray(rows) || rows.length === 0) {
-      throw new Error("Нет данных");
-    }
+if (!Array.isArray(rows) || rows.length === 0) {
+  throw new Error("Нет данных");
+}
+
+rows.sort((a, b) => new Date(a.date) - new Date(b.date));
 
     const values = rows.map(r => Number(r.value));
     const dates = rows.map(r => r.date);
