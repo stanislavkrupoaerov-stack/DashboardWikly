@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>BTC Supply in Profit — поиск дна рынка</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
   <style>
     body {
@@ -50,7 +51,13 @@
     }
     .chart-box {
       position: relative;
-      height: 430px;
+      height: 520px;
+    }
+    .chart-box canvas {
+      cursor: grab;
+    }
+    .chart-box canvas:active {
+      cursor: grabbing;
     }
     .chart-controls {
       margin-top: 12px;
@@ -242,6 +249,10 @@ async function loadData() {
     badge.style.color = zoneColor;
     badge.style.border = "1px solid " + zoneColor;
 
+    const visibleDays = 365;
+    const lastIndex = dates.length - 1;
+    const firstVisible = Math.max(0, lastIndex - visibleDays + 1);
+
     const btcChart = new Chart(document.getElementById("chart"), {
       type: "line",
       data: {
@@ -268,6 +279,15 @@ async function loadData() {
           intersect: false
         },
         scales: {
+          x: {
+            min: firstVisible,
+            max: lastIndex,
+            ticks: {
+              maxRotation: 0,
+              autoSkip: true,
+              maxTicksLimit: 10
+            }
+          },
           y: {
             min: 0,
             max: 100,
@@ -285,16 +305,28 @@ async function loadData() {
             }
           },
           zoom: {
+            limits: {
+              x: {
+                min: 0,
+                max: lastIndex,
+                minRange: 14
+              }
+            },
             pan: {
               enabled: true,
-              mode: "x"
+              mode: "x",
+              threshold: 2
             },
             zoom: {
               wheel: {
-                enabled: true
+                enabled: true,
+                speed: 0.1
               },
               pinch: {
                 enabled: true
+              },
+              drag: {
+                enabled: false
               },
               mode: "x"
             }
@@ -323,7 +355,9 @@ async function loadData() {
       btcChart.resetZoom();
     };
 
-    status.textContent = "Данные обновлены: " + dates[dates.length - 1];
+    status.textContent =
+      "Данные обновлены: " + dates[dates.length - 1] +
+      ". Показан последний год. Колесо мыши — масштаб, зажать левую кнопку и тянуть — сдвиг.";
 
   } catch (error) {
     status.textContent =
