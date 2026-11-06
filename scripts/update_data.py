@@ -11,12 +11,14 @@ DATE_KEYS = [
     "d", "date", "day", "timestamp", "time", "datetime"
 ]
 
+
 def get_json(url):
     request = urllib.request.Request(url)
     request.add_header("User-Agent", "btc-supply-profit-site")
 
     with urllib.request.urlopen(request, timeout=30) as response:
         return json.loads(response.read().decode())
+
 
 def find_date(row):
     for key in DATE_KEYS:
@@ -28,6 +30,7 @@ def find_date(row):
             return value
 
     return None
+
 
 def find_value(row, date_key=None):
     preferred_keys = []
@@ -73,33 +76,44 @@ def find_value(row, date_key=None):
 
     return None
 
-def normalize(rows):
+
+def normalize_row(row):
+    if not isinstance(row, dict):
+        return None
+
+    date = find_date(row)
+    value = find_value(row)
+
+    if date is None or value is None:
+        return None
+
+    ratio = float(value)
+
+    if ratio <= 0:
+        percent = 0.0
+    else:
+        percent = ratio / (1 + ratio) * 100
+
+    return {
+        "date": str(date),
+        "value": round(percent, 4)
+    }
+
+
+def normalize_rows(rows):
     result = []
 
     for row in rows:
-        if not isinstance(row, dict):
-            continue
+        normalized = normalize_row(row)
 
-        date = find_date(row)
-        value = find_value(row)
-
-        if date is not None and value is not None:
-            ratio = float(value)
-
-            if ratio <= 0:
-                percent = 0.0
-            else:
-                percent = ratio / (1 + ratio) * 100
-
-            result.append({
-                "date": str(date),
-                "value": round(percent, 4)
-            })
+        if normalized is not None:
+            result.append(normalized)
 
     result.sort(key=lambda item: item["date"])
     return result
 
-def main():
+
+def get_list_response():
     url = f"https://api.bitcoin-data.com/v1/{ENDPOINT}?token={API_TOKEN}"
 
     print(f"Пробуем endpoint: {ENDPOINT}")
@@ -127,9 +141,46 @@ def main():
     print("Поля первой записи:", list(first_row.keys()))
     print("Первая запись:", first_row)
 
-    rows = normalize(raw)
+    return raw
+
+
+def get_latest_row():
+    url = f"https://api.bitcoin-data.com/v1/{ENDPOINT}/last?token={API_TOKEN}"
+
+    print("Пробуем endpoint /last")
+
+    try:
+        raw = get_json(url)
+    except urllib.error.HTTPError as error:
+        print(f"Не удалось получить /last: {error.code}")
+        return None
+
+    print("Последняя запись из /last:", raw)
+
+    if isinstance(raw, list) and len(raw) > 0:
+        raw = raw[-1]
+
+    return normalize_row(raw)
+
+
+def main():
+    raw_rows = get_list_response()
+    rows = normalize_rows(raw_rows)
 
     print(f"После нормализации записей: {len(rows)}")
+
+    latest_row = get_latest_row()
+
+    if latest_row is not None:
+        print("Нормализованная запись /last:", latest_row)
+
+        if not rows or latest_row["date"] > rows[-1]["date"]:
+            rows.append(latest_row)
+            print(f"Добавлена более свежая запись: {latest_row['date']}")
+        else:
+            print("Запись из /last не новее данных списка.")
+
+    rows.sort(key=lambda item: item["date"])
 
     if len(rows) < 10:
         raise Exception(
@@ -146,7 +197,10 @@ def main():
 
     print(f"Файл создан: {output_path}")
     print(f"Сохранено записей: {len(rows)}")
+    print(f"Последняя дата: {rows[-1]['date']}")
+    print(f"Последнее значение: {rows[-1]['value']}")
     print(f"Использованный endpoint: {ENDPOINT}")
+
 
 if __name__ == "__main__":
     main()
