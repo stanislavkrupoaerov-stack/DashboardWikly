@@ -205,10 +205,13 @@ async function loadData() {
 
     rows.sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    const values = rows.map(r => Number(r.value));
-    const dates = rows.map(r => r.date);
-    const current = values[values.length - 1];
-    const value30 = values[values.length - 31] || values[0];
+    const values = rows.map(row => Number(row.value));
+    const dates = rows.map(row => row.date);
+
+    const lastIndex = dates.length - 1;
+    const current = values[lastIndex];
+
+    const value30 = values[Math.max(0, lastIndex - 30)];
     const change30 = current - value30;
 
     document.getElementById("currentValue").textContent =
@@ -250,8 +253,11 @@ async function loadData() {
     badge.style.border = "1px solid " + zoneColor;
 
     const visibleDays = 365;
-    const lastIndex = dates.length - 1;
-    const firstVisible = Math.max(0, lastIndex - visibleDays + 1);
+    const firstVisibleIndex = Math.max(0, lastIndex - visibleDays + 1);
+
+    const firstVisibleDate = dates[firstVisibleIndex];
+    const lastVisibleDate = dates[lastIndex];
+    const firstDate = dates[0];
 
     const btcChart = new Chart(document.getElementById("chart"), {
       type: "line",
@@ -280,8 +286,8 @@ async function loadData() {
         },
         scales: {
           x: {
-            min: firstVisible,
-            max: lastIndex,
+            min: firstVisibleDate,
+            max: lastVisibleDate,
             ticks: {
               maxRotation: 0,
               autoSkip: true,
@@ -307,8 +313,8 @@ async function loadData() {
           zoom: {
             limits: {
               x: {
-                min: 0,
-                max: lastIndex,
+                min: firstDate,
+                max: lastVisibleDate,
                 minRange: 14
               }
             },
@@ -356,10 +362,12 @@ async function loadData() {
     };
 
     status.textContent =
-      "Данные обновлены: " + dates[dates.length - 1] +
+      "Данные обновлены: " + dates[lastIndex] +
       ". Показан последний год. Колесо мыши — масштаб, зажать левую кнопку и тянуть — сдвиг.";
 
   } catch (error) {
+    console.error(error);
+
     status.textContent =
       "Данные пока не загружены. Проверьте, что файл data/supply-in-profit.json создан и GitHub Action выполнился успешно.";
   }
