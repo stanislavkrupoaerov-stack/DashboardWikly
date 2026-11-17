@@ -24,6 +24,9 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Установить зависимости
+        run: pip install requests
+
       - name: Обновить данные Supply in Profit
         env:
           BITCOIN_DATA_API_TOKEN: ${{ secrets.BITCOIN_DATA_API_TOKEN }}
