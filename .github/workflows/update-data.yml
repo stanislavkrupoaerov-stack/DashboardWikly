@@ -24,13 +24,18 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Обновить данные
+      - name: Обновить данные Supply in Profit
         env:
           BITCOIN_DATA_API_TOKEN: ${{ secrets.BITCOIN_DATA_API_TOKEN }}
         run: python scripts/update_data.py
 
+      - name: Обновить данные UTXO in Profit
+        env:
+          BITCOIN_DATA_API_TOKEN: ${{ secrets.BITCOIN_DATA_API_TOKEN }}
+        run: python scripts/update_utxo_in_profit.py
+
       - name: Сохранить данные в репозиторий
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "Обновление данных Supply in Profit"
+          commit_message: "Обновление данных Bitcoin-метрик"
           file_pattern: "data/*.json"
