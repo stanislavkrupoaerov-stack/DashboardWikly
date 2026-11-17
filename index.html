@@ -20,6 +20,7 @@
       padding: 24px;
     }
     h1 { margin: 0 0 10px; }
+    h2 { margin: 0 0 16px; }
     .subtitle { color: #93a0b4; }
     .panel {
       background: #121826;
@@ -186,13 +187,148 @@
       </div>
     </div>
 
+    <h1>BTC: Number of UTXOs in Profit %</h1>
+    <p class="subtitle">
+      Доля UTXO в прибыли показывает, какой процент неподтверждённых выходов Bitcoin был создан
+      по цене ниже текущей. Это близкая к Supply in Profit метрика, но она считает отдельные UTXO,
+      а не количество BTC.
+    </p>
+
+    <div class="panel">
+      <div class="kpi-grid">
+        <div class="kpi">
+          <div class="kpi-label">Текущее значение</div>
+          <div class="kpi-value" id="utxoCurrentValue">—</div>
+          <div class="badge" id="utxoCurrentZone">Загрузка…</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Изменение за 30 дней</div>
+          <div class="kpi-value" id="utxoChange30">—</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Минимум за период</div>
+          <div class="kpi-value" id="utxoPeriodMin">—</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Максимум за период</div>
+          <div class="kpi-value" id="utxoPeriodMax">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>История UTXO in Profit %</h2>
+      <div class="chart-box">
+        <canvas id="utxoChart"></canvas>
+      </div>
+
+      <div class="chart-controls">
+        <button id="utxoPanLeft" type="button">← Раньше</button>
+        <button id="utxoPanRight" type="button">Позже →</button>
+        <button id="utxoZoomIn" type="button">+ Приблизить</button>
+        <button id="utxoZoomOut" type="button">− Отдалить</button>
+        <button id="utxoResetZoom" type="button">Сбросить</button>
+      </div>
+
+      <p class="loading" id="utxoStatus">Загрузка данных…</p>
+    </div>
+
+    <div class="panel">
+      <h2>Как читать UTXO in Profit %</h2>
+      <table>
+        <tr>
+          <th>Зона</th>
+          <th>Состояние рынка</th>
+          <th>Практический вывод</th>
+        </tr>
+        <tr>
+          <td>95–100%</td>
+          <td>Перегрев</td>
+          <td>Почти все UTXO в прибыли. Это не автоматический сигнал продавать.</td>
+        </tr>
+        <tr>
+          <td>80–95%</td>
+          <td>Бычий рынок</td>
+          <td>Преобладают прибыльные позиции. Следите за ценой и динамикой метрики.</td>
+        </tr>
+        <tr>
+          <td>50–70%</td>
+          <td>Нейтрально / коррекция</td>
+          <td>Смешанная структура прибыли и убытка.</td>
+        </tr>
+        <tr>
+          <td>20–50%</td>
+          <td>Возможный откуп</td>
+          <td>Значительная часть UTXO в убытке. Нужны подтверждения другими метриками.</td>
+        </tr>
+        <tr>
+          <td>0–20%</td>
+          <td>Капитуляция / потенциальное дно</td>
+          <td>Большинство UTXO в убытке. Это зона для поиска разворота, а не гарантия дна.</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="panel">
+      <h2>Важно про UTXO in Profit %</h2>
+      <div class="note">
+        <strong>Это аналитическая метрика, а не сигнал на покупку или продажу.</strong><br><br>
+        Низкие значения могут сопровождаться дальнейшим падением цены, а высокие — продолжением роста.
+        Для поиска потенциального дна используйте метрику вместе с ценой, трендом, Supply in Profit,
+        SOPR, MVRV и макро-фоном.
+      </div>
+    </div>
+
     <footer>
       Данные: BGeometrics / bitcoin-data.com. Сайт не является инвестиционной рекомендацией.
     </footer>
   </div>
 
 <script>
-async function loadData() {
+function getZone(value) {
+  if (value >= 95) {
+    return {
+      text: "Перегрев: 95–100%",
+      color: "#ef4444"
+    };
+  }
+
+  if (value >= 80) {
+    return {
+      text: "Бычий рынок: 80–95%",
+      color: "#f59e0b"
+    };
+  }
+
+  if (value >= 50) {
+    return {
+      text: "Нейтрально: 50–70%",
+      color: "#3b82f6"
+    };
+  }
+
+  if (value >= 20) {
+    return {
+      text: "Зона откупа: 20–50%",
+      color: "#22c55e"
+    };
+  }
+
+  return {
+    text: "Капитуляция: 0–20%",
+    color: "#a855f7"
+  };
+}
+
+function setBadge(elementId, zone) {
+  const badge = document.getElementById(elementId);
+  badge.textContent = zone.text;
+  badge.style.background = zone.color + "22";
+  badge.style.color = zone.color;
+  badge.style.border = "1px solid " + zone.color;
+}
+
+async function loadSupplyInProfit() {
   const status = document.getElementById("status");
 
   try {
@@ -205,53 +341,22 @@ async function loadData() {
 
     rows.sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    const values = rows.map(r => Number(r.value));
-    const dates = rows.map(r => r.date);
+    const values = rows.map(row => Number(row.value));
+    const dates = rows.map(row => row.date);
     const current = values[values.length - 1];
     const value30 = values[values.length - 31] || values[0];
     const change30 = current - value30;
 
-    document.getElementById("currentValue").textContent =
-      current.toFixed(2) + "%";
-
+    document.getElementById("currentValue").textContent = current.toFixed(2) + "%";
     document.getElementById("change30").textContent =
       (change30 >= 0 ? "+" : "") + change30.toFixed(2) + " п.п.";
+    document.getElementById("periodMin").textContent = Math.min(...values).toFixed(2) + "%";
+    document.getElementById("periodMax").textContent = Math.max(...values).toFixed(2) + "%";
 
-    document.getElementById("periodMin").textContent =
-      Math.min(...values).toFixed(2) + "%";
+    setBadge("currentZone", getZone(current));
 
-    document.getElementById("periodMax").textContent =
-      Math.max(...values).toFixed(2) + "%";
-
-    let zoneText = "";
-    let zoneColor = "";
-
-    if (current >= 95) {
-      zoneText = "Перегрев: 95–100%";
-      zoneColor = "#ef4444";
-    } else if (current >= 80) {
-      zoneText = "Бычий рынок: 80–95%";
-      zoneColor = "#f59e0b";
-    } else if (current >= 50) {
-      zoneText = "Нейтрально: 50–70%";
-      zoneColor = "#3b82f6";
-    } else if (current >= 20) {
-      zoneText = "Зона откупа: 20–50%";
-      zoneColor = "#22c55e";
-    } else {
-      zoneText = "Капитуляция: 0–20%";
-      zoneColor = "#a855f7";
-    }
-
-    const badge = document.getElementById("currentZone");
-    badge.textContent = zoneText;
-    badge.style.background = zoneColor + "22";
-    badge.style.color = zoneColor;
-    badge.style.border = "1px solid " + zoneColor;
-
-    const visibleDays = 365;
     const lastIndex = dates.length - 1;
-    const firstVisible = Math.max(0, lastIndex - visibleDays + 1);
+    const firstVisible = Math.max(0, lastIndex - 365 + 1);
 
     const btcChart = new Chart(document.getElementById("chart"), {
       type: "line",
@@ -335,25 +440,11 @@ async function loadData() {
       }
     });
 
-    document.getElementById("panLeft").onclick = () => {
-      btcChart.pan({ x: -150 }, undefined, "none");
-    };
-
-    document.getElementById("panRight").onclick = () => {
-      btcChart.pan({ x: 150 }, undefined, "none");
-    };
-
-    document.getElementById("zoomIn").onclick = () => {
-      btcChart.zoom(1.25);
-    };
-
-    document.getElementById("zoomOut").onclick = () => {
-      btcChart.zoom(0.8);
-    };
-
-    document.getElementById("resetZoom").onclick = () => {
-      btcChart.resetZoom();
-    };
+    document.getElementById("panLeft").onclick = () => btcChart.pan({ x: -150 }, undefined, "none");
+    document.getElementById("panRight").onclick = () => btcChart.pan({ x: 150 }, undefined, "none");
+    document.getElementById("zoomIn").onclick = () => btcChart.zoom(1.25);
+    document.getElementById("zoomOut").onclick = () => btcChart.zoom(0.8);
+    document.getElementById("resetZoom").onclick = () => btcChart.resetZoom();
 
     status.textContent =
       "Данные обновлены: " + dates[dates.length - 1] +
@@ -365,7 +456,136 @@ async function loadData() {
   }
 }
 
-loadData();
+async function loadUtxoInProfit() {
+  const status = document.getElementById("utxoStatus");
+
+  try {
+    const response = await fetch("data/utxo-in-profit.json?v=" + Date.now());
+    const rows = await response.json();
+
+    if (!Array.isArray(rows) || rows.length === 0) {
+      throw new Error("Нет данных");
+    }
+
+    rows.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    const values = rows.map(row => Number(row.value));
+    const dates = rows.map(row => row.date);
+    const current = values[values.length - 1];
+    const value30 = values[values.length - 31] || values[0];
+    const change30 = current - value30;
+
+    document.getElementById("utxoCurrentValue").textContent = current.toFixed(2) + "%";
+    document.getElementById("utxoChange30").textContent =
+      (change30 >= 0 ? "+" : "") + change30.toFixed(2) + " п.п.";
+    document.getElementById("utxoPeriodMin").textContent = Math.min(...values).toFixed(2) + "%";
+    document.getElementById("utxoPeriodMax").textContent = Math.max(...values).toFixed(2) + "%";
+
+    setBadge("utxoCurrentZone", getZone(current));
+
+    const lastIndex = dates.length - 1;
+    const firstVisible = Math.max(0, lastIndex - 365 + 1);
+
+    const utxoChart = new Chart(document.getElementById("utxoChart"), {
+      type: "line",
+      data: {
+        labels: dates,
+        datasets: [{
+          label: "% UTXO в прибыли",
+          data: values,
+          borderColor: "#38bdf8",
+          backgroundColor: "rgba(56,189,248,0.12)",
+          borderWidth: 2,
+          pointRadius: 0,
+          pointHoverRadius: 5,
+          pointHitRadius: 20,
+          fill: true,
+          tension: 0.15
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {
+          mode: "nearest",
+          axis: "x",
+          intersect: false
+        },
+        scales: {
+          x: {
+            min: firstVisible,
+            max: lastIndex,
+            ticks: {
+              maxRotation: 0,
+              autoSkip: true,
+              maxTicksLimit: 10
+            }
+          },
+          y: {
+            min: 0,
+            max: 100,
+            ticks: {
+              callback: value => value + "%"
+            }
+          }
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              title: items => items[0].label,
+              label: context => " " + context.parsed.y.toFixed(2) + "% UTXO в прибыли"
+            }
+          },
+          zoom: {
+            limits: {
+              x: {
+                min: 0,
+                max: lastIndex,
+                minRange: 14
+              }
+            },
+            pan: {
+              enabled: true,
+              mode: "x",
+              threshold: 2
+            },
+            zoom: {
+              wheel: {
+                enabled: true,
+                speed: 0.1
+              },
+              pinch: {
+                enabled: true
+              },
+              drag: {
+                enabled: false
+              },
+              mode: "x"
+            }
+          }
+        }
+      }
+    });
+
+    document.getElementById("utxoPanLeft").onclick = () => utxoChart.pan({ x: -150 }, undefined, "none");
+    document.getElementById("utxoPanRight").onclick = () => utxoChart.pan({ x: 150 }, undefined, "none");
+    document.getElementById("utxoZoomIn").onclick = () => utxoChart.zoom(1.25);
+    document.getElementById("utxoZoomOut").onclick = () => utxoChart.zoom(0.8);
+    document.getElementById("utxoResetZoom").onclick = () => utxoChart.resetZoom();
+
+    status.textContent =
+      "Данные обновлены: " + dates[dates.length - 1] +
+      ". Показан последний год. Колесо мыши — масштаб, зажать левую кнопку и тянуть — сдвиг.";
+
+  } catch (error) {
+    status.textContent =
+      "Данные UTXO in Profit пока не загружены. Проверьте, что файл data/utxo-in-profit.json создан и GitHub Action выполнился успешно.";
+  }
+}
+
+loadSupplyInProfit();
+loadUtxoInProfit();
 </script>
 </body>
 </html>
