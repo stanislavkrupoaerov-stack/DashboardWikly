@@ -264,4 +264,541 @@
         <tr>
           <td>0–20%</td>
           <td>Капитуляция / потенциальное дно</td>
-          <td>Большинство UTXO в убытке. Это зона для поиска разворота,
+          <td>Большинство UTXO в убытке. Это зона для поиска разворота, а не гарантия дна.</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="panel">
+      <h2>Важно про UTXO in Profit %</h2>
+      <div class="note">
+        <strong>Это аналитическая метрика, а не сигнал на покупку или продажу.</strong><br><br>
+        Низкие значения могут сопровождаться дальнейшим падением цены, а высокие — продолжением роста.
+        Для поиска потенциального дна используйте метрику вместе с ценой, трендом, Supply in Profit,
+        SOPR, MVRV и макро-фоном.
+      </div>
+    </div>
+
+    <h1>BTC: Short-Term Holder SOPR</h1>
+    <p class="subtitle">
+      Short-Term Holder SOPR показывает, с прибылью или убытком краткосрочные держатели Bitcoin
+      в среднем перемещают свои монеты. Значение выше 1 означает прибыль, ниже 1 — убыток.
+    </p>
+
+    <div class="panel">
+      <div class="kpi-grid">
+        <div class="kpi">
+          <div class="kpi-label">Текущее значение</div>
+          <div class="kpi-value" id="sthSoprCurrentValue">—</div>
+          <div class="badge" id="sthSoprCurrentZone">Загрузка…</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Дата данных</div>
+          <div class="kpi-value" id="sthSoprDate">—</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Изменение за 30 дней</div>
+          <div class="kpi-value" id="sthSoprChange30">—</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Минимум за период</div>
+          <div class="kpi-value" id="sthSoprPeriodMin">—</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Максимум за период</div>
+          <div class="kpi-value" id="sthSoprPeriodMax">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>История Short-Term Holder SOPR</h2>
+      <div class="chart-box">
+        <canvas id="sthSoprChart"></canvas>
+      </div>
+
+      <div class="chart-controls">
+        <button id="sthSoprPanLeft" type="button">← Раньше</button>
+        <button id="sthSoprPanRight" type="button">Позже →</button>
+        <button id="sthSoprZoomIn" type="button">+ Приблизить</button>
+        <button id="sthSoprZoomOut" type="button">− Отдалить</button>
+        <button id="sthSoprResetZoom" type="button">Сбросить</button>
+      </div>
+
+      <p class="loading" id="sthSoprStatus">Загрузка данных…</p>
+    </div>
+
+    <div class="panel">
+      <h2>Как читать Short-Term Holder SOPR</h2>
+      <table>
+        <tr>
+          <th>Зона</th>
+          <th>Состояние рынка</th>
+          <th>Практический вывод</th>
+        </tr>
+        <tr>
+          <td>Выше 1.05</td>
+          <td>Перегрев</td>
+          <td>Краткосрочные держатели активно фиксируют прибыль. Это не автоматический сигнал продавать.</td>
+        </tr>
+        <tr>
+          <td>1.00–1.05</td>
+          <td>Бычий рынок</td>
+          <td>Краткосрочные держатели в среднем в прибыли.</td>
+        </tr>
+        <tr>
+          <td>0.95–1.00</td>
+          <td>Нейтрально / коррекция</td>
+          <td>Часть краткосрочных держателей продаёт с небольшим убытком.</td>
+        </tr>
+        <tr>
+          <td>0.90–0.95</td>
+          <td>Возможный откуп</td>
+          <td>Убытки краткосрочных держателей растут. Нужны подтверждения другими метриками.</td>
+        </tr>
+        <tr>
+          <td>Ниже 0.90</td>
+          <td>Капитуляция / потенциальное дно</td>
+          <td>Сильные убытки у краткосрочных держателей. Это зона для поиска разворота, а не гарантия дна.</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="panel">
+      <h2>Важно про Short-Term Holder SOPR</h2>
+      <div class="note">
+        <strong>Это аналитическая метрика, а не сигнал на покупку или продажу.</strong><br><br>
+        Низкий STH SOPR может сопровождаться дальнейшим падением цены, а высокий — продолжением роста.
+        Для поиска потенциального дна используйте метрику вместе с ценой, трендом, Supply in Profit,
+        UTXO in Profit, MVRV и макро-фоном.
+      </div>
+    </div>
+
+    <footer>
+      Данные: BGeometrics / bitcoin-data.com. Сайт не является инвестиционной рекомендацией.
+    </footer>
+  </div>
+
+<script>
+function getSupplyZone(value) {
+  if (value >= 95) {
+    return {
+      text: "Перегрев: 95–100%",
+      color: "#ef4444"
+    };
+  }
+
+  if (value >= 80) {
+    return {
+      text: "Бычий рынок: 80–95%",
+      color: "#f59e0b"
+    };
+  }
+
+  if (value >= 50) {
+    return {
+      text: "Нейтрально: 50–70%",
+      color: "#3b82f6"
+    };
+  }
+
+  if (value >= 20) {
+    return {
+      text: "Зона откупа: 20–50%",
+      color: "#22c55e"
+    };
+  }
+
+  return {
+    text: "Капитуляция: 0–20%",
+    color: "#a855f7"
+  };
+}
+
+function setBadge(elementId, zone) {
+  const badge = document.getElementById(elementId);
+  badge.textContent = zone.text;
+  badge.style.background = zone.color + "22";
+  badge.style.color = zone.color;
+  badge.style.border = "1px solid " + zone.color;
+}
+
+async function loadSupplyInProfit() {
+  const status = document.getElementById("status");
+
+  try {
+    const response = await fetch("data/supply-in-profit.json?v=" + Date.now());
+    const rows = await response.json();
+
+    if (!Array.isArray(rows) || rows.length === 0) {
+      throw new Error("Нет данных");
+    }
+
+    rows.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    const values = rows.map(row => Number(row.value));
+    const dates = rows.map(row => row.date);
+    const current = values[values.length - 1];
+    const value30 = values[values.length - 31] || values[0];
+    const change30 = current - value30;
+
+    document.getElementById("currentValue").textContent = current.toFixed(2) + "%";
+    document.getElementById("change30").textContent =
+      (change30 >= 0 ? "+" : "") + change30.toFixed(2) + " п.п.";
+    document.getElementById("periodMin").textContent = Math.min(...values).toFixed(2) + "%";
+    document.getElementById("periodMax").textContent = Math.max(...values).toFixed(2) + "%";
+
+    setBadge("currentZone", getSupplyZone(current));
+
+    const lastIndex = dates.length - 1;
+    const firstVisible = Math.max(0, lastIndex - 365 + 1);
+
+    const btcChart = new Chart(document.getElementById("chart"), {
+      type: "line",
+      data: {
+        labels: dates,
+        datasets: [{
+          label: "% предложения в прибыли",
+          data: values,
+          borderColor: "#f7931a",
+          backgroundColor: "rgba(247,147,26,0.12)",
+          borderWidth: 2,
+          pointRadius: 0,
+          pointHoverRadius: 5,
+          pointHitRadius: 20,
+          fill: true,
+          tension: 0.15
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {
+          mode: "nearest",
+          axis: "x",
+          intersect: false
+        },
+        scales: {
+          x: {
+            min: firstVisible,
+            max: lastIndex,
+            ticks: {
+              maxRotation: 0,
+              autoSkip: true,
+              maxTicksLimit: 10
+            }
+          },
+          y: {
+            min: 0,
+            max: 100,
+            ticks: {
+              callback: value => value + "%"
+            }
+          }
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              title: items => items[0].label,
+              label: context => " " + context.parsed.y.toFixed(2) + "% в прибыли"
+            }
+          },
+          zoom: {
+            limits: {
+              x: {
+                min: 0,
+                max: lastIndex,
+                minRange: 14
+              }
+            },
+            pan: {
+              enabled: true,
+              mode: "x",
+              threshold: 2
+            },
+            zoom: {
+              wheel: {
+                enabled: true,
+                speed: 0.1
+              },
+              pinch: {
+                enabled: true
+              },
+              drag: {
+                enabled: false
+              },
+              mode: "x"
+            }
+          }
+        }
+      }
+    });
+
+    document.getElementById("panLeft").onclick = () => btcChart.pan({ x: -150 }, undefined, "none");
+    document.getElementById("panRight").onclick = () => btcChart.pan({ x: 150 }, undefined, "none");
+    document.getElementById("zoomIn").onclick = () => btcChart.zoom(1.25);
+    document.getElementById("zoomOut").onclick = () => btcChart.zoom(0.8);
+    document.getElementById("resetZoom").onclick = () => btcChart.resetZoom();
+
+    status.textContent =
+      "Данные обновлены: " + dates[dates.length - 1] +
+      ". Показан последний год. Колесо мыши — масштаб, зажать левую кнопку и тянуть — сдвиг.";
+
+  } catch (error) {
+    status.textContent =
+      "Данные пока не загружены. Проверьте, что файл data/supply-in-profit.json создан и GitHub Action выполнился успешно.";
+  }
+}
+
+async function loadUtxoInProfit() {
+  const status = document.getElementById("utxoStatus");
+
+  try {
+    const response = await fetch("data/utxo-in-profit.json?v=" + Date.now());
+    const rows = await response.json();
+
+    if (!Array.isArray(rows) || rows.length === 0) {
+      throw new Error("Нет данных");
+    }
+
+    rows.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    const values = rows.map(row => Number(row.value));
+    const dates = rows.map(row => row.date);
+    const current = values[values.length - 1];
+    const value30 = values[values.length - 31] || values[0];
+    const change30 = current - value30;
+
+    document.getElementById("utxoCurrentValue").textContent = current.toFixed(2) + "%";
+    document.getElementById("utxoChange30").textContent =
+      (change30 >= 0 ? "+" : "") + change30.toFixed(2) + " п.п.";
+    document.getElementById("utxoPeriodMin").textContent = Math.min(...values).toFixed(2) + "%";
+    document.getElementById("utxoPeriodMax").textContent = Math.max(...values).toFixed(2) + "%";
+
+    setBadge("utxoCurrentZone", getSupplyZone(current));
+
+    const lastIndex = dates.length - 1;
+    const firstVisible = Math.max(0, lastIndex - 365 + 1);
+
+    const utxoChart = new Chart(document.getElementById("utxoChart"), {
+      type: "line",
+      data: {
+        labels: dates,
+        datasets: [{
+          label: "% UTXO в прибыли",
+          data: values,
+          borderColor: "#38bdf8",
+          backgroundColor: "rgba(56,189,248,0.12)",
+          borderWidth: 2,
+          pointRadius: 0,
+          pointHoverRadius: 5,
+          pointHitRadius: 20,
+          fill: true,
+          tension: 0.15
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {
+          mode: "nearest",
+          axis: "x",
+          intersect: false
+        },
+        scales: {
+          x: {
+            min: firstVisible,
+            max: lastIndex,
+            ticks: {
+              maxRotation: 0,
+              autoSkip: true,
+              maxTicksLimit: 10
+            }
+          },
+          y: {
+            min: 0,
+            max: 100,
+            ticks: {
+              callback: value => value + "%"
+            }
+          }
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              title: items => items[0].label,
+              label: context => " " + context.parsed.y.toFixed(2) + "% UTXO в прибыли"
+            }
+          },
+          zoom: {
+            limits: {
+              x: {
+                min: 0,
+                max: lastIndex,
+                minRange: 14
+              }
+            },
+            pan: {
+              enabled: true,
+              mode: "x",
+              threshold: 2
+            },
+            zoom: {
+              wheel: {
+                enabled: true,
+                speed: 0.1
+              },
+              pinch: {
+                enabled: true
+              },
+              drag: {
+                enabled: false
+              },
+              mode: "x"
+            }
+          }
+        }
+      }
+    });
+
+    document.getElementById("utxoPanLeft").onclick = () => utxoChart.pan({ x: -150 }, undefined, "none");
+    document.getElementById("utxoPanRight").onclick = () => utxoChart.pan({ x: 150 }, undefined, "none");
+    document.getElementById("utxoZoomIn").onclick = () => utxoChart.zoom(1.25);
+    document.getElementById("utxoZoomOut").onclick = () => utxoChart.zoom(0.8);
+    document.getElementById("utxoResetZoom").onclick = () => utxoChart.resetZoom();
+
+    status.textContent =
+      "Данные обновлены: " + dates[dates.length - 1] +
+      ". Показан последний год. Колесо мыши — масштаб, зажать левую кнопку и тянуть — сдвиг.";
+
+  } catch (error) {
+    status.textContent =
+      "Данные UTXO in Profit пока не загружены. Проверьте, что файл data/utxo-in-profit.json создан и GitHub Action выполнился успешно.";
+  }
+}
+
+async function loadSthSopr() {
+  const status = document.getElementById("sthSoprStatus");
+
+  try {
+    const response = await fetch("data/sth-sopr.json?v=" + Date.now());
+    const data = await response.json();
+
+    if (!data || typeof data.value !== "number") {
+      throw new Error("Нет данных");
+    }
+
+    const value = data.value;
+    const date = data.date;
+
+    document.getElementById("sthSoprCurrentValue").textContent = value.toFixed(4);
+    document.getElementById("sthSoprDate").textContent = date;
+
+    let zone;
+
+    if (value < 0.90) {
+      zone = {
+        text: "Капитуляция / потенциальное дно",
+        color: "#a855f7"
+      };
+    } else if (value < 0.95) {
+      zone = {
+        text: "Возможный откуп",
+        color: "#22c55e"
+      };
+    } else if (value < 1.00) {
+      zone = {
+        text: "Нейтрально / коррекция",
+        color: "#3b82f6"
+      };
+    } else if (value < 1.05) {
+      zone = {
+        text: "Бычий рынок",
+        color: "#f59e0b"
+      };
+    } else {
+      zone = {
+        text: "Перегрев",
+        color: "#ef4444"
+      };
+    }
+
+    setBadge("sthSoprCurrentZone", zone);
+
+    const sthSoprChart = new Chart(document.getElementById("sthSoprChart"), {
+      type: "line",
+      data: {
+        labels: [date],
+        datasets: [{
+          label: "Short-Term Holder SOPR",
+          data: [value],
+          borderColor: "#a78bfa",
+          backgroundColor: "rgba(167,139,250,0.12)",
+          borderWidth: 2,
+          pointRadius: 5,
+          pointHoverRadius: 7,
+          pointHitRadius: 20,
+          fill: true,
+          tension: 0.15
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {
+          mode: "nearest",
+          axis: "x",
+          intersect: false
+        },
+        scales: {
+          x: {
+            ticks: {
+              maxRotation: 0,
+              autoSkip: true,
+              maxTicksLimit: 10
+            }
+          },
+          y: {
+            suggestedMin: 0.85,
+            suggestedMax: 1.15,
+            ticks: {
+              callback: value => value.toFixed(2)
+            }
+          }
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              title: items => items[0].label,
+              label: context => " STH SOPR: " + context.parsed.y.toFixed(4)
+            }
+          }
+        }
+      }
+    });
+
+    document.getElementById("sthSoprPanLeft").onclick = () => sthSoprChart.pan({ x: -150 }, undefined, "none");
+    document.getElementById("sthSoprPanRight").onclick = () => sthSoprChart.pan({ x: 150 }, undefined, "none");
+    document.getElementById("sthSoprZoomIn").onclick = () => sthSoprChart.zoom(1.25);
+    document.getElementById("sthSoprZoomOut").onclick = () => sthSoprChart.zoom(0.8);
+    document.getElementById("sthSoprResetZoom").onclick = () => sthSoprChart.resetZoom();
+
+    status.textContent =
+      "Последнее доступное значение: " + date +
+      ". Пока в JSON хранится только текущая точка, поэтому история, минимум, максимум и изменение за 30 дней недоступны.";
+
+  } catch (error) {
+    status.textContent =
+      "Данные Short-Term Holder SOPR пока не загружены. Проверьте, что файл data/sth-sopr.json создан и GitHub Action выполнился успешно.";
+  }
+}
+
+loadSupplyInProfit();
+loadUtxoInProfit();
+loadSthSopr();
+</script>
+</body>
+</html>
