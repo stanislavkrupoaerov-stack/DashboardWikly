@@ -684,36 +684,45 @@ async function loadSthSopr() {
 
   try {
     const response = await fetch("data/sth-sopr.json?v=" + Date.now());
-    const data = await response.json();
+    const rows = await response.json();
 
-    if (!data || typeof data.value !== "number") {
+    if (!Array.isArray(rows) || rows.length === 0) {
       throw new Error("Нет данных");
     }
 
-    const value = data.value;
-    const date = data.date;
+    rows.sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    document.getElementById("sthSoprCurrentValue").textContent = value.toFixed(4);
-    document.getElementById("sthSoprDate").textContent = date;
+    const values = rows.map(row => Number(row.value));
+    const dates = rows.map(row => row.date);
+    const current = values[values.length - 1];
+    const value30 = values[values.length - 31] || values[0];
+    const change30 = current - value30;
+
+    document.getElementById("sthSoprCurrentValue").textContent = current.toFixed(4);
+    document.getElementById("sthSoprDate").textContent = dates[dates.length - 1];
+    document.getElementById("sthSoprChange30").textContent =
+      (change30 >= 0 ? "+" : "") + change30.toFixed(4);
+    document.getElementById("sthSoprPeriodMin").textContent = Math.min(...values).toFixed(4);
+    document.getElementById("sthSoprPeriodMax").textContent = Math.max(...values).toFixed(4);
 
     let zone;
 
-    if (value < 0.90) {
+    if (current < 0.90) {
       zone = {
         text: "Капитуляция / потенциальное дно",
         color: "#a855f7"
       };
-    } else if (value < 0.95) {
+    } else if (current < 0.95) {
       zone = {
         text: "Возможный откуп",
         color: "#22c55e"
       };
-    } else if (value < 1.00) {
+    } else if (current < 1.00) {
       zone = {
         text: "Нейтрально / коррекция",
         color: "#3b82f6"
       };
-    } else if (value < 1.05) {
+    } else if (current < 1.05) {
       zone = {
         text: "Бычий рынок",
         color: "#f59e0b"
@@ -727,18 +736,21 @@ async function loadSthSopr() {
 
     setBadge("sthSoprCurrentZone", zone);
 
+    const lastIndex = dates.length - 1;
+    const firstVisible = Math.max(0, lastIndex - 365 + 1);
+
     const sthSoprChart = new Chart(document.getElementById("sthSoprChart"), {
       type: "line",
       data: {
-        labels: [date],
+        labels: dates,
         datasets: [{
           label: "Short-Term Holder SOPR",
-          data: [value],
+          data: values,
           borderColor: "#a78bfa",
           backgroundColor: "rgba(167,139,250,0.12)",
           borderWidth: 2,
-          pointRadius: 5,
-          pointHoverRadius: 7,
+          pointRadius: 0,
+          pointHoverRadius: 5,
           pointHitRadius: 20,
           fill: true,
           tension: 0.15
@@ -754,6 +766,8 @@ async function loadSthSopr() {
         },
         scales: {
           x: {
+            min: firstVisible,
+            max: lastIndex,
             ticks: {
               maxRotation: 0,
               autoSkip: true,
@@ -775,6 +789,33 @@ async function loadSthSopr() {
               title: items => items[0].label,
               label: context => " STH SOPR: " + context.parsed.y.toFixed(4)
             }
+          },
+          zoom: {
+            limits: {
+              x: {
+                min: 0,
+                max: lastIndex,
+                minRange: 14
+              }
+            },
+            pan: {
+              enabled: true,
+              mode: "x",
+              threshold: 2
+            },
+            zoom: {
+              wheel: {
+                enabled: true,
+                speed: 0.1
+              },
+              pinch: {
+                enabled: true
+              },
+              drag: {
+                enabled: false
+              },
+              mode: "x"
+            }
           }
         }
       }
@@ -787,8 +828,8 @@ async function loadSthSopr() {
     document.getElementById("sthSoprResetZoom").onclick = () => sthSoprChart.resetZoom();
 
     status.textContent =
-      "Последнее доступное значение: " + date +
-      ". Пока в JSON хранится только текущая точка, поэтому история, минимум, максимум и изменение за 30 дней недоступны.";
+      "Данные обновлены: " + dates[dates.length - 1] +
+      ". Показан последний год. Колесо мыши — масштаб, зажать левую кнопку и тянуть — сдвиг.";
 
   } catch (error) {
     status.textContent =
