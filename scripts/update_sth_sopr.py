@@ -19,19 +19,33 @@ records = response.json()
 if not records:
     raise ValueError("API returned no STH SOPR records")
 
-latest = records[-1]
+rows = []
 
-date = latest["d"]
-value = float(latest["sthSopr"])
+for record in records:
+    date = record.get("d")
+    value = record.get("sthSopr")
+
+    if date is None or value is None:
+        continue
+
+    rows.append({
+        "date": date,
+        "value": float(value)
+    })
+
+if not rows:
+    raise ValueError("No valid STH SOPR records found")
+
+rows.sort(key=lambda row: row["date"])
 
 os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
 
-data = {
-    "date": date,
-    "value": value
-}
-
 with open(OUTPUT_PATH, "w", encoding="utf-8") as file:
-    json.dump(data, file, ensure_ascii=False, indent=2)
+    json.dump(rows, file, ensure_ascii=False, indent=2)
 
-print(f"Saved STH SOPR {value} for {date} to {OUTPUT_PATH}")
+latest = rows[-1]
+
+print(
+    f"Saved {len(rows)} STH SOPR records. "
+    f"Latest: {latest['date']} = {latest['value']}"
+)
