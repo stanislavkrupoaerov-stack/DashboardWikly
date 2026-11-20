@@ -470,6 +470,102 @@
       </div>
     </div>
 
+    <h1>BTC: MVRV Z-Score</h1>
+    <p class="subtitle">
+      MVRV Z-Score сравнивает рыночную стоимость Bitcoin с её реализованной стоимостью.
+      Низкие значения исторически чаще встречались в зонах капитуляции и потенциального дна,
+      высокие — в зонах перегрева.
+    </p>
+
+    <div class="panel">
+      <div class="kpi-grid">
+        <div class="kpi">
+          <div class="kpi-label">Текущее значение</div>
+          <div class="kpi-value" id="mvrvZCurrentValue">—</div>
+          <div class="badge" id="mvrvZCurrentZone">Загрузка…</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Дата данных</div>
+          <div class="kpi-value" id="mvrvZDate">—</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Изменение за 30 дней</div>
+          <div class="kpi-value" id="mvrvZChange30">—</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Минимум за период</div>
+          <div class="kpi-value" id="mvrvZPeriodMin">—</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Максимум за период</div>
+          <div class="kpi-value" id="mvrvZPeriodMax">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>История MVRV Z-Score</h2>
+      <div class="chart-box">
+        <canvas id="mvrvZChart"></canvas>
+      </div>
+
+      <div class="chart-controls">
+        <button id="mvrvZPanLeft" type="button">← Раньше</button>
+        <button id="mvrvZPanRight" type="button">Позже →</button>
+        <button id="mvrvZZoomIn" type="button">+ Приблизить</button>
+        <button id="mvrvZZoomOut" type="button">− Отдалить</button>
+        <button id="mvrvZResetZoom" type="button">Сбросить</button>
+      </div>
+
+      <p class="loading" id="mvrvZStatus">Загрузка данных…</p>
+    </div>
+
+    <div class="panel">
+      <h2>Как читать MVRV Z-Score</h2>
+      <table>
+        <tr>
+          <th>Зона</th>
+          <th>Состояние рынка</th>
+          <th>Практический вывод</th>
+        </tr>
+        <tr>
+          <td>Выше 6.00</td>
+          <td>Эйфория</td>
+          <td>Исторически зона сильного перегрева. Это не автоматический сигнал продавать.</td>
+        </tr>
+        <tr>
+          <td>3.00–6.00</td>
+          <td>Вера / жадность</td>
+          <td>Рынок заметно переоценён относительно реализованной стоимости. Следите за ценой и динамикой метрики.</td>
+        </tr>
+        <tr>
+          <td>1.00–3.00</td>
+          <td>Нейтральная зона</td>
+          <td>Рынок не находится в исторически экстремальной зоне.</td>
+        </tr>
+        <tr>
+          <td>0.10–1.00</td>
+          <td>Накопление / возможный откуп</td>
+          <td>Значения становятся ближе к историческим зонам низкой оценки. Нужны подтверждения другими метриками.</td>
+        </tr>
+        <tr>
+          <td>Ниже 0.10</td>
+          <td>Капитуляция / потенциальное дно</td>
+          <td>Исторически зона глубокого дисконта. Это зона для поиска разворота, а не гарантия дна.</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="panel">
+      <h2>Важно про MVRV Z-Score</h2>
+      <div class="note">
+        <strong>Это аналитическая метрика, а не сигнал на покупку или продажу.</strong><br><br>
+        Низкий MVRV Z-Score может сохраняться во время затяжного медвежьего рынка, а высокий —
+        во время сильного бычьего тренда. Для поиска потенциального дна используйте метрику вместе
+        с ценой, трендом, Supply in Profit, UTXO in Profit, STH SOPR, NUPL и макро-фоном.
+      </div>
+    </div>
+
     <footer>
       Данные: BGeometrics / bitcoin-data.com. Сайт не является инвестиционной рекомендацией.
     </footer>
@@ -536,6 +632,41 @@ function getNuplZone(value) {
   if (value >= 0) {
     return {
       text: "Надежда / страх",
+      color: "#22c55e"
+    };
+  }
+
+  return {
+    text: "Капитуляция / потенциальное дно",
+    color: "#a855f7"
+  };
+}
+
+function getMvrvZZone(value) {
+  if (value > 6) {
+    return {
+      text: "Эйфория",
+      color: "#ef4444"
+    };
+  }
+
+  if (value > 3) {
+    return {
+      text: "Вера / жадность",
+      color: "#f59e0b"
+    };
+  }
+
+  if (value > 1) {
+    return {
+      text: "Нейтральная зона",
+      color: "#3b82f6"
+    };
+  }
+
+  if (value >= 0.10) {
+    return {
+      text: "Накопление / возможный откуп",
       color: "#22c55e"
     };
   }
@@ -1095,10 +1226,140 @@ async function loadNupl() {
   }
 }
 
+async function loadMvrvZScore() {
+  const status = document.getElementById("mvrvZStatus");
+
+  try {
+    const response = await fetch("data/mvrv-zscore.json?v=" + Date.now());
+    const rows = await response.json();
+
+    if (!Array.isArray(rows) || rows.length === 0) {
+      throw new Error("Нет данных");
+    }
+
+    rows.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    const values = rows.map(row => Number(row.value));
+    const dates = rows.map(row => row.date);
+    const current = values[values.length - 1];
+    const value30 = values[values.length - 31] || values[0];
+    const change30 = current - value30;
+
+    document.getElementById("mvrvZCurrentValue").textContent = current.toFixed(4);
+    document.getElementById("mvrvZDate").textContent = dates[dates.length - 1];
+    document.getElementById("mvrvZChange30").textContent =
+      (change30 >= 0 ? "+" : "") + change30.toFixed(4);
+    document.getElementById("mvrvZPeriodMin").textContent = Math.min(...values).toFixed(4);
+    document.getElementById("mvrvZPeriodMax").textContent = Math.max(...values).toFixed(4);
+
+    setBadge("mvrvZCurrentZone", getMvrvZZone(current));
+
+    const lastIndex = dates.length - 1;
+    const firstVisible = Math.max(0, lastIndex - 365 + 1);
+
+    const mvrvZChart = new Chart(document.getElementById("mvrvZChart"), {
+      type: "line",
+      data: {
+        labels: dates,
+        datasets: [{
+          label: "MVRV Z-Score",
+          data: values,
+          borderColor: "#fb7185",
+          backgroundColor: "rgba(251,113,133,0.12)",
+          borderWidth: 2,
+          pointRadius: 0,
+          pointHoverRadius: 5,
+          pointHitRadius: 20,
+          fill: true,
+          tension: 0.15
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {
+          mode: "nearest",
+          axis: "x",
+          intersect: false
+        },
+        scales: {
+          x: {
+            min: firstVisible,
+            max: lastIndex,
+            ticks: {
+              maxRotation: 0,
+              autoSkip: true,
+              maxTicksLimit: 10
+            }
+          },
+          y: {
+            suggestedMin: -1,
+            suggestedMax: 8,
+            ticks: {
+              callback: value => value.toFixed(2)
+            }
+          }
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              title: items => items[0].label,
+              label: context => " MVRV Z-Score: " + context.parsed.y.toFixed(4)
+            }
+          },
+          zoom: {
+            limits: {
+              x: {
+                min: 0,
+                max: lastIndex,
+                minRange: 14
+              }
+            },
+            pan: {
+              enabled: true,
+              mode: "x",
+              threshold: 2
+            },
+            zoom: {
+              wheel: {
+                enabled: true,
+                speed: 0.1
+              },
+              pinch: {
+                enabled: true
+              },
+              drag: {
+                enabled: false
+              },
+              mode: "x"
+            }
+          }
+        }
+      }
+    });
+
+    document.getElementById("mvrvZPanLeft").onclick = () => mvrvZChart.pan({ x: -150 }, undefined, "none");
+    document.getElementById("mvrvZPanRight").onclick = () => mvrvZChart.pan({ x: 150 }, undefined, "none");
+    document.getElementById("mvrvZZoomIn").onclick = () => mvrvZChart.zoom(1.25);
+    document.getElementById("mvrvZZoomOut").onclick = () => mvrvZChart.zoom(0.8);
+    document.getElementById("mvrvZResetZoom").onclick = () => mvrvZChart.resetZoom();
+
+    status.textContent =
+      "Данные обновлены: " + dates[dates.length - 1] +
+      ". Показан последний год. Колесо мыши — масштаб, зажать левую кнопку и тянуть — сдвиг.";
+
+  } catch (error) {
+    status.textContent =
+      "Данные MVRV Z-Score пока не загружены. Проверьте, что файл data/mvrv-zscore.json создан и GitHub Action выполнился успешно.";
+  }
+}
+
 loadSupplyInProfit();
 loadUtxoInProfit();
 loadSthSopr();
 loadNupl();
+loadMvrvZScore();
 </script>
 </body>
 </html>
