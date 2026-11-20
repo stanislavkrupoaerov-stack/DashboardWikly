@@ -374,6 +374,102 @@
       </div>
     </div>
 
+    <h1>BTC: NUPL</h1>
+    <p class="subtitle">
+      Net Unrealized Profit and Loss (NUPL) показывает, находится ли рынок Bitcoin в совокупной
+      нереализованной прибыли или убытке. Отрицательные значения обычно означают преобладание
+      убыточных позиций, положительные — прибыли.
+    </p>
+
+    <div class="panel">
+      <div class="kpi-grid">
+        <div class="kpi">
+          <div class="kpi-label">Текущее значение</div>
+          <div class="kpi-value" id="nuplCurrentValue">—</div>
+          <div class="badge" id="nuplCurrentZone">Загрузка…</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Дата данных</div>
+          <div class="kpi-value" id="nuplDate">—</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Изменение за 30 дней</div>
+          <div class="kpi-value" id="nuplChange30">—</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Минимум за период</div>
+          <div class="kpi-value" id="nuplPeriodMin">—</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Максимум за период</div>
+          <div class="kpi-value" id="nuplPeriodMax">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>История NUPL</h2>
+      <div class="chart-box">
+        <canvas id="nuplChart"></canvas>
+      </div>
+
+      <div class="chart-controls">
+        <button id="nuplPanLeft" type="button">← Раньше</button>
+        <button id="nuplPanRight" type="button">Позже →</button>
+        <button id="nuplZoomIn" type="button">+ Приблизить</button>
+        <button id="nuplZoomOut" type="button">− Отдалить</button>
+        <button id="nuplResetZoom" type="button">Сбросить</button>
+      </div>
+
+      <p class="loading" id="nuplStatus">Загрузка данных…</p>
+    </div>
+
+    <div class="panel">
+      <h2>Как читать NUPL</h2>
+      <table>
+        <tr>
+          <th>Зона</th>
+          <th>Состояние рынка</th>
+          <th>Практический вывод</th>
+        </tr>
+        <tr>
+          <td>Выше 0.75</td>
+          <td>Эйфория</td>
+          <td>Рынок в сильной прибыли. Это зона перегрева, но не автоматический сигнал продавать.</td>
+        </tr>
+        <tr>
+          <td>0.50–0.75</td>
+          <td>Вера / жадность</td>
+          <td>Преобладает нереализованная прибыль. Следите за ценой и динамикой метрики.</td>
+        </tr>
+        <tr>
+          <td>0.25–0.50</td>
+          <td>Оптимизм / отрицание</td>
+          <td>Рынок остаётся в прибыли, но запас до перегрева уменьшается.</td>
+        </tr>
+        <tr>
+          <td>0.00–0.25</td>
+          <td>Надежда / страх</td>
+          <td>Часть рынка переходит в убыток. Важна реакция цены на снижение.</td>
+        </tr>
+        <tr>
+          <td>Ниже 0.00</td>
+          <td>Капитуляция / потенциальное дно</td>
+          <td>Рынок в совокупном убытке. Это зона для поиска разворота, а не гарантия дна.</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="panel">
+      <h2>Важно про NUPL</h2>
+      <div class="note">
+        <strong>Это аналитическая метрика, а не сигнал на покупку или продажу.</strong><br><br>
+        Отрицательный NUPL может сохраняться во время затяжного медвежьего рынка, а высокий положительный —
+        во время сильного бычьего тренда. Для поиска потенциального дна используйте NUPL вместе с ценой,
+        трендом, Supply in Profit, UTXO in Profit, STH SOPR, MVRV и макро-фоном.
+      </div>
+    </div>
+
     <footer>
       Данные: BGeometrics / bitcoin-data.com. Сайт не является инвестиционной рекомендацией.
     </footer>
@@ -411,6 +507,41 @@ function getSupplyZone(value) {
 
   return {
     text: "Капитуляция: 0–20%",
+    color: "#a855f7"
+  };
+}
+
+function getNuplZone(value) {
+  if (value > 0.75) {
+    return {
+      text: "Эйфория",
+      color: "#ef4444"
+    };
+  }
+
+  if (value > 0.50) {
+    return {
+      text: "Вера / жадность",
+      color: "#f59e0b"
+    };
+  }
+
+  if (value > 0.25) {
+    return {
+      text: "Оптимизм / отрицание",
+      color: "#3b82f6"
+    };
+  }
+
+  if (value >= 0) {
+    return {
+      text: "Надежда / страх",
+      color: "#22c55e"
+    };
+  }
+
+  return {
+    text: "Капитуляция / потенциальное дно",
     color: "#a855f7"
   };
 }
@@ -837,9 +968,137 @@ async function loadSthSopr() {
   }
 }
 
+async function loadNupl() {
+  const status = document.getElementById("nuplStatus");
+
+  try {
+    const response = await fetch("data/nupl.json?v=" + Date.now());
+    const rows = await response.json();
+
+    if (!Array.isArray(rows) || rows.length === 0) {
+      throw new Error("Нет данных");
+    }
+
+    rows.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    const values = rows.map(row => Number(row.value));
+    const dates = rows.map(row => row.date);
+    const current = values[values.length - 1];
+    const value30 = values[values.length - 31] || values[0];
+    const change30 = current - value30;
+
+    document.getElementById("nuplCurrentValue").textContent = current.toFixed(4);
+    document.getElementById("nuplDate").textContent = dates[dates.length - 1];
+    document.getElementById("nuplChange30").textContent =
+      (change30 >= 0 ? "+" : "") + change30.toFixed(4);
+    document.getElementById("nuplPeriodMin").textContent = Math.min(...values).toFixed(4);
+    document.getElementById("nuplPeriodMax").textContent = Math.max(...values).toFixed(4);
+
+    setBadge("nuplCurrentZone", getNuplZone(current));
+
+    const lastIndex = dates.length - 1;
+    const firstVisible = Math.max(0, lastIndex - 365 + 1);
+
+    const nuplChart = new Chart(document.getElementById("nuplChart"), {
+      type: "line",
+      data: {
+        labels: dates,
+        datasets: [{
+          label: "NUPL",
+          data: values,
+          borderColor: "#34d399",
+          backgroundColor: "rgba(52,211,153,0.12)",
+          borderWidth: 2,
+          pointRadius: 0,
+          pointHoverRadius: 5,
+          pointHitRadius: 20,
+          fill: true,
+          tension: 0.15
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {
+          mode: "nearest",
+          axis: "x",
+          intersect: false
+        },
+        scales: {
+          x: {
+            min: firstVisible,
+            max: lastIndex,
+            ticks: {
+              maxRotation: 0,
+              autoSkip: true,
+              maxTicksLimit: 10
+            }
+          },
+          y: {
+            ticks: {
+              callback: value => value.toFixed(2)
+            }
+          }
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              title: items => items[0].label,
+              label: context => " NUPL: " + context.parsed.y.toFixed(4)
+            }
+          },
+          zoom: {
+            limits: {
+              x: {
+                min: 0,
+                max: lastIndex,
+                minRange: 14
+              }
+            },
+            pan: {
+              enabled: true,
+              mode: "x",
+              threshold: 2
+            },
+            zoom: {
+              wheel: {
+                enabled: true,
+                speed: 0.1
+              },
+              pinch: {
+                enabled: true
+              },
+              drag: {
+                enabled: false
+              },
+              mode: "x"
+            }
+          }
+        }
+      }
+    });
+
+    document.getElementById("nuplPanLeft").onclick = () => nuplChart.pan({ x: -150 }, undefined, "none");
+    document.getElementById("nuplPanRight").onclick = () => nuplChart.pan({ x: 150 }, undefined, "none");
+    document.getElementById("nuplZoomIn").onclick = () => nuplChart.zoom(1.25);
+    document.getElementById("nuplZoomOut").onclick = () => nuplChart.zoom(0.8);
+    document.getElementById("nuplResetZoom").onclick = () => nuplChart.resetZoom();
+
+    status.textContent =
+      "Данные обновлены: " + dates[dates.length - 1] +
+      ". Показан последний год. Колесо мыши — масштаб, зажать левую кнопку и тянуть — сдвиг.";
+
+  } catch (error) {
+    status.textContent =
+      "Данные NUPL пока не загружены. Проверьте, что файл data/nupl.json создан и GitHub Action выполнился успешно.";
+  }
+}
+
 loadSupplyInProfit();
 loadUtxoInProfit();
 loadSthSopr();
+loadNupl();
 </script>
 </body>
 </html>
