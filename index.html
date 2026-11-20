@@ -566,6 +566,99 @@
       </div>
     </div>
 
+    <h1>BTC: Long-Term Holder SOPR</h1>
+    <p class="subtitle">
+      Long-Term Holder SOPR показывает, с прибылью или убытком долгосрочные держатели Bitcoin
+      в среднем перемещают свои монеты. Значение выше 1 означает прибыль, ниже 1 — убыток.
+    </p>
+
+    <div class="panel">
+      <div class="kpi-grid">
+        <div class="kpi">
+          <div class="kpi-label">Текущее значение</div>
+          <div class="kpi-value" id="lthSoprCurrentValue">—</div>
+          <div class="badge" id="lthSoprCurrentZone">Загрузка…</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Дата данных</div>
+          <div class="kpi-value" id="lthSoprDate">—</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Изменение за 30 дней</div>
+          <div class="kpi-value" id="lthSoprChange30">—</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Минимум за период</div>
+          <div class="kpi-value" id="lthSoprPeriodMin">—</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Максимум за период</div>
+          <div class="kpi-value" id="lthSoprPeriodMax">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>История Long-Term Holder SOPR</h2>
+      <div class="chart-box">
+        <canvas id="lthSoprChart"></canvas>
+      </div>
+      <div class="chart-controls">
+        <button id="lthSoprPanLeft" type="button">← Раньше</button>
+        <button id="lthSoprPanRight" type="button">Позже →</button>
+        <button id="lthSoprZoomIn" type="button">+ Приблизить</button>
+        <button id="lthSoprZoomOut" type="button">− Отдалить</button>
+        <button id="lthSoprResetZoom" type="button">Сбросить</button>
+      </div>
+      <p class="loading" id="lthSoprStatus">Загрузка данных…</p>
+    </div>
+
+    <div class="panel">
+      <h2>Как читать Long-Term Holder SOPR</h2>
+      <table>
+        <tr>
+          <th>Зона</th>
+          <th>Состояние рынка</th>
+          <th>Практический вывод</th>
+        </tr>
+        <tr>
+          <td>Выше 1.05</td>
+          <td>Фиксация прибыли</td>
+          <td>Долгосрочные держатели в среднем реализуют заметную прибыль. Это не автоматический сигнал продавать.</td>
+        </tr>
+        <tr>
+          <td>1.00–1.05</td>
+          <td>Прибыль</td>
+          <td>Долгосрочные держатели в среднем продают с прибылью.</td>
+        </tr>
+        <tr>
+          <td>0.95–1.00</td>
+          <td>Нейтрально / коррекция</td>
+          <td>Часть долгосрочных держателей продаёт около безубытка или с небольшим убытком.</td>
+        </tr>
+        <tr>
+          <td>0.90–0.95</td>
+          <td>Возможная капитуляция</td>
+          <td>Убытки у долгосрочных держателей растут. Нужны подтверждения другими метриками.</td>
+        </tr>
+        <tr>
+          <td>Ниже 0.90</td>
+          <td>Капитуляция / потенциальное дно</td>
+          <td>Сильные убытки у долгосрочных держателей. Это зона для поиска разворота, а не гарантия дна.</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="panel">
+      <h2>Важно про Long-Term Holder SOPR</h2>
+      <div class="note">
+        <strong>Это аналитическая метрика, а не сигнал на покупку или продажу.</strong><br><br>
+        Низкий LTH SOPR может сохраняться во время затяжного медвежьего рынка, а высокий —
+        во время сильного бычьего тренда. Для поиска потенциального дна используйте метрику вместе
+        с ценой, трендом, Supply in Profit, UTXO in Profit, STH SOPR, NUPL, MVRV и макро-фоном.
+      </div>
+    </div>
+
     <footer>
       Данные: BGeometrics / bitcoin-data.com. Сайт не является инвестиционной рекомендацией.
     </footer>
@@ -1355,11 +1448,176 @@ async function loadMvrvZScore() {
   }
 }
 
+function getLthSoprZone(value) {
+  if (value > 1.05) {
+    return {
+      text: "Фиксация прибыли",
+      color: "#ef4444"
+    };
+  }
+
+  if (value >= 1.00) {
+    return {
+      text: "Прибыль",
+      color: "#f59e0b"
+    };
+  }
+
+  if (value >= 0.95) {
+    return {
+      text: "Нейтрально / коррекция",
+      color: "#3b82f6"
+    };
+  }
+
+  if (value >= 0.90) {
+    return {
+      text: "Возможная капитуляция",
+      color: "#22c55e"
+    };
+  }
+
+  return {
+    text: "Капитуляция / потенциальное дно",
+    color: "#a855f7"
+  };
+}
+
+async function loadLthSopr() {
+  const status = document.getElementById("lthSoprStatus");
+
+  try {
+    const response = await fetch("data/lth-sopr.json?v=" + Date.now());
+    const rows = await response.json();
+
+    if (!Array.isArray(rows) || rows.length === 0) {
+      throw new Error("Нет данных");
+    }
+
+    rows.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    const values = rows.map(row => Number(row.value));
+    const dates = rows.map(row => row.date);
+    const current = values[values.length - 1];
+    const value30 = values[values.length - 31] || values[0];
+    const change30 = current - value30;
+
+    document.getElementById("lthSoprCurrentValue").textContent = current.toFixed(4);
+    document.getElementById("lthSoprDate").textContent = dates[dates.length - 1];
+    document.getElementById("lthSoprChange30").textContent =
+      (change30 >= 0 ? "+" : "") + change30.toFixed(4);
+    document.getElementById("lthSoprPeriodMin").textContent = Math.min(...values).toFixed(4);
+    document.getElementById("lthSoprPeriodMax").textContent = Math.max(...values).toFixed(4);
+
+    setBadge("lthSoprCurrentZone", getLthSoprZone(current));
+
+    const lastIndex = dates.length - 1;
+    const firstVisible = Math.max(0, lastIndex - 365 + 1);
+
+    const lthSoprChart = new Chart(document.getElementById("lthSoprChart"), {
+      type: "line",
+      data: {
+        labels: dates,
+        datasets: [{
+          label: "Long-Term Holder SOPR",
+          data: values,
+          borderColor: "#facc15",
+          backgroundColor: "rgba(250,204,21,0.12)",
+          borderWidth: 2,
+          pointRadius: 0,
+          pointHoverRadius: 5,
+          pointHitRadius: 20,
+          fill: true,
+          tension: 0.15
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {
+          mode: "nearest",
+          axis: "x",
+          intersect: false
+        },
+        scales: {
+          x: {
+            min: firstVisible,
+            max: lastIndex,
+            ticks: {
+              maxRotation: 0,
+              autoSkip: true,
+              maxTicksLimit: 10
+            }
+          },
+          y: {
+            suggestedMin: 0.85,
+            suggestedMax: 1.15,
+            ticks: {
+              callback: value => value.toFixed(2)
+            }
+          }
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              title: items => items[0].label,
+              label: context => " LTH SOPR: " + context.parsed.y.toFixed(4)
+            }
+          },
+          zoom: {
+            limits: {
+              x: {
+                min: 0,
+                max: lastIndex,
+                minRange: 14
+              }
+            },
+            pan: {
+              enabled: true,
+              mode: "x",
+              threshold: 2
+            },
+            zoom: {
+              wheel: {
+                enabled: true,
+                speed: 0.1
+              },
+              pinch: {
+                enabled: true
+              },
+              drag: {
+                enabled: false
+              },
+              mode: "x"
+            }
+          }
+        }
+      }
+    });
+
+    document.getElementById("lthSoprPanLeft").onclick = () => lthSoprChart.pan({ x: -150 }, undefined, "none");
+    document.getElementById("lthSoprPanRight").onclick = () => lthSoprChart.pan({ x: 150 }, undefined, "none");
+    document.getElementById("lthSoprZoomIn").onclick = () => lthSoprChart.zoom(1.25);
+    document.getElementById("lthSoprZoomOut").onclick = () => lthSoprChart.zoom(0.8);
+    document.getElementById("lthSoprResetZoom").onclick = () => lthSoprChart.resetZoom();
+
+    status.textContent =
+      "Данные обновлены: " + dates[dates.length - 1] +
+      ". Показан последний год. Колесо мыши — масштаб, зажать левую кнопку и тянуть — сдвиг.";
+
+  } catch (error) {
+    status.textContent =
+      "Данные Long-Term Holder SOPR пока не загружены. Проверьте, что файл data/lth-sopr.json создан и GitHub Action выполнился успешно.";
+  }
+}
+
 loadSupplyInProfit();
 loadUtxoInProfit();
 loadSthSopr();
 loadNupl();
 loadMvrvZScore();
+loadLthSopr();
 </script>
 </body>
 </html>
