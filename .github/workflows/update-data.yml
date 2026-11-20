@@ -42,6 +42,11 @@ jobs:
           BITCOIN_DATA_API_TOKEN: ${{ secrets.BITCOIN_DATA_API_TOKEN }}
         run: python scripts/update_sth_sopr.py
 
+      - name: Обновить данные NUPL
+        env:
+          BITCOIN_DATA_API_TOKEN: ${{ secrets.BITCOIN_DATA_API_TOKEN }}
+        run: python scripts/update_nupl.py
+
       - name: Сохранить данные в репозиторий
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
