@@ -1,6 +1,8 @@
 name: Update BTC Supply in Profit
 
 on:
+  schedule:
+    - cron: "0 6 * * *"
   workflow_dispatch:
 
 permissions:
@@ -19,58 +21,46 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Установить зависимости
-        run: pip install requests
-
-      - name: Обновить данные Supply in Profit
+      - name: Обновить данные Supply in Profit %
         env:
           BITCOIN_DATA_API_TOKEN: ${{ secrets.BITCOIN_DATA_API_TOKEN }}
-        run: python scripts/update_data.py
+        run: python scripts/update_supply_in_profit.py
 
-      - name: Пауза перед следующим запросом
-        run: sleep 20
-
-      - name: Обновить данные UTXO in Profit
+      - name: Обновить данные Number of UTXOs in Profit %
         env:
           BITCOIN_DATA_API_TOKEN: ${{ secrets.BITCOIN_DATA_API_TOKEN }}
-        run: python scripts/update_utxo_in_profit.py
+        run: python scripts/update_utxos_in_profit.py
 
-      - name: Пауза перед следующим запросом
-        run: sleep 20
-
-      - name: Обновить данные STH SOPR
+      - name: Обновить данные Short-Term Holder SOPR
         env:
           BITCOIN_DATA_API_TOKEN: ${{ secrets.BITCOIN_DATA_API_TOKEN }}
-        run: python scripts/update_sth_sopr.py
-
-      - name: Пауза перед следующим запросом
-        run: sleep 20
+        run: python scripts/update_short_term_holder_sopr.py
 
       - name: Обновить данные NUPL
         env:
           BITCOIN_DATA_API_TOKEN: ${{ secrets.BITCOIN_DATA_API_TOKEN }}
         run: python scripts/update_nupl.py
 
-      - name: Пауза перед следующим запросом
-        run: sleep 20
-
       - name: Обновить данные MVRV Z-Score
         env:
           BITCOIN_DATA_API_TOKEN: ${{ secrets.BITCOIN_DATA_API_TOKEN }}
-        run: python scripts/update_mvrv_zscore.py
+        run: python scripts/update_mvrv_z_score.py
 
-      - name: Пауза перед следующим запросом
-        run: sleep 20
-
-      - name: Обновить данные LTH SOPR
+      - name: Обновить данные Long-Term Holder SOPR
         env:
           BITCOIN_DATA_API_TOKEN: ${{ secrets.BITCOIN_DATA_API_TOKEN }}
-        run: python scripts/update_lth_sopr.py
+        run: python scripts/update_long_term_holder_sopr.py
 
-      - name: Сохранить обновлённые данные
+      - name: Пауза перед Fear & Greed Index
+        run: sleep 20
+
+      - name: Обновить данные Fear & Greed Index
+        run: python scripts/update_fear_greed.py
+
+      - name: Зафиксировать обновлённые данные
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data/
-          git commit -m "Обновление Bitcoin-метрик" || echo "Нет изменений для сохранения"
+          git diff --cached --quiet || git commit -m "Обновить данные Bitcoin-метрик"
           git push
