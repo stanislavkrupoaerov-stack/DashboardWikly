@@ -659,8 +659,106 @@
       </div>
     </div>
 
+    <h1>BTC: Fear & Greed Index</h1>
+    <p class="subtitle">
+      Fear & Greed Index показывает общее настроение рынка Bitcoin: страх, нейтральность или жадность.
+      Значения находятся в диапазоне от 0 до 100. Низкие значения могут сопровождать периоды страха
+      и капитуляции, но не гарантируют дно рынка.
+    </p>
+
+    <div class="panel">
+      <div class="kpi-grid">
+        <div class="kpi">
+          <div class="kpi-label">Текущее значение</div>
+          <div class="kpi-value" id="fearGreedCurrentValue">—</div>
+          <div class="badge" id="fearGreedCurrentZone">Загрузка…</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Дата данных</div>
+          <div class="kpi-value" id="fearGreedDate">—</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Изменение за 30 дней</div>
+          <div class="kpi-value" id="fearGreedChange30">—</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Минимум за период</div>
+          <div class="kpi-value" id="fearGreedPeriodMin">—</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Максимум за период</div>
+          <div class="kpi-value" id="fearGreedPeriodMax">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>История Fear & Greed Index</h2>
+      <div class="chart-box">
+        <canvas id="fearGreedChart"></canvas>
+      </div>
+
+      <div class="chart-controls">
+        <button id="fearGreedPanLeft" type="button">← Раньше</button>
+        <button id="fearGreedPanRight" type="button">Позже →</button>
+        <button id="fearGreedZoomIn" type="button">+ Приблизить</button>
+        <button id="fearGreedZoomOut" type="button">− Отдалить</button>
+        <button id="fearGreedResetZoom" type="button">Сбросить</button>
+      </div>
+
+      <p class="loading" id="fearGreedStatus">Загрузка данных…</p>
+    </div>
+
+    <div class="panel">
+      <h2>Как читать Fear & Greed Index</h2>
+      <table>
+        <tr>
+          <th>Зона</th>
+          <th>Состояние рынка</th>
+          <th>Практический вывод</th>
+        </tr>
+        <tr>
+          <td>0–24</td>
+          <td>Сильный страх / возможная капитуляция</td>
+          <td>Рынок находится в состоянии сильного страха. Это зона для поиска разворота, но не гарантия дна.</td>
+        </tr>
+        <tr>
+          <td>25–44</td>
+          <td>Страх</td>
+          <td>Преобладает осторожность и страх. Важно смотреть на цену, тренд и другие метрики.</td>
+        </tr>
+        <tr>
+          <td>45–55</td>
+          <td>Нейтрально</td>
+          <td>Настроение рынка сбалансировано между страхом и жадностью.</td>
+        </tr>
+        <tr>
+          <td>56–75</td>
+          <td>Жадность</td>
+          <td>Преобладает оптимизм. Это не автоматический сигнал продавать.</td>
+        </tr>
+        <tr>
+          <td>76–100</td>
+          <td>Сильная жадность / перегрев</td>
+          <td>Настроение рынка крайне оптимистично. Высокий индекс не гарантирует вершину.</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="panel">
+      <h2>Важно про Fear & Greed Index</h2>
+      <div class="note">
+        <strong>Это аналитическая метрика, а не сигнал на покупку или продажу.</strong><br><br>
+        Низкий Fear & Greed Index может сопровождаться дальнейшим падением цены, а высокий —
+        продолжением роста. Низкий индекс не гарантирует дно, а высокий не гарантирует вершину.<br><br>
+        Для поиска потенциального дна используйте индекс вместе с ценой, трендом, Supply in Profit,
+        UTXO in Profit, STH SOPR, LTH SOPR, NUPL, MVRV Z-Score и макро-фоном.
+      </div>
+    </div>
+
     <footer>
-      Данные: BGeometrics / bitcoin-data.com. Сайт не является инвестиционной рекомендацией.
+      Данные: BGeometrics / bitcoin-data.com. Fear & Greed Index by CryptoKeyhole.
+      Сайт не является инвестиционной рекомендацией.
     </footer>
   </div>
 
@@ -1612,12 +1710,177 @@ async function loadLthSopr() {
   }
 }
 
+function getFearGreedZone(value) {
+  if (value <= 24) {
+    return {
+      text: "Сильный страх / возможная капитуляция",
+      color: "#a855f7"
+    };
+  }
+
+  if (value <= 44) {
+    return {
+      text: "Страх",
+      color: "#22c55e"
+    };
+  }
+
+  if (value <= 55) {
+    return {
+      text: "Нейтрально",
+      color: "#3b82f6"
+    };
+  }
+
+  if (value <= 75) {
+    return {
+      text: "Жадность",
+      color: "#f59e0b"
+    };
+  }
+
+  return {
+    text: "Сильная жадность / перегрев",
+    color: "#ef4444"
+  };
+}
+
+async function loadFearGreed() {
+  const status = document.getElementById("fearGreedStatus");
+
+  try {
+    const response = await fetch("data/fear-greed.json?v=" + Date.now());
+    const rows = await response.json();
+
+    if (!Array.isArray(rows) || rows.length === 0) {
+      throw new Error("Нет данных");
+    }
+
+    rows.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    const values = rows.map(row => Number(row.value));
+    const dates = rows.map(row => row.date);
+    const current = values[values.length - 1];
+    const value30 = values[values.length - 31] || values[0];
+    const change30 = current - value30;
+
+    document.getElementById("fearGreedCurrentValue").textContent = current;
+    document.getElementById("fearGreedDate").textContent = dates[dates.length - 1];
+    document.getElementById("fearGreedChange30").textContent =
+      (change30 >= 0 ? "+" : "") + change30;
+    document.getElementById("fearGreedPeriodMin").textContent = Math.min(...values);
+    document.getElementById("fearGreedPeriodMax").textContent = Math.max(...values);
+
+    setBadge("fearGreedCurrentZone", getFearGreedZone(current));
+
+    const lastIndex = dates.length - 1;
+    const firstVisible = Math.max(0, lastIndex - 365 + 1);
+
+    const fearGreedChart = new Chart(document.getElementById("fearGreedChart"), {
+      type: "line",
+      data: {
+        labels: dates,
+        datasets: [{
+          label: "Fear & Greed Index",
+          data: values,
+          borderColor: "#22d3ee",
+          backgroundColor: "rgba(34,211,238,0.12)",
+          borderWidth: 2,
+          pointRadius: 0,
+          pointHoverRadius: 5,
+          pointHitRadius: 20,
+          fill: true,
+          tension: 0.15
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {
+          mode: "nearest",
+          axis: "x",
+          intersect: false
+        },
+        scales: {
+          x: {
+            min: firstVisible,
+            max: lastIndex,
+            ticks: {
+              maxRotation: 0,
+              autoSkip: true,
+              maxTicksLimit: 10
+            }
+          },
+          y: {
+            min: 0,
+            max: 100,
+            ticks: {
+              stepSize: 10
+            }
+          }
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              title: items => items[0].label,
+              label: context => " Fear & Greed Index: " + context.parsed.y
+            }
+          },
+          zoom: {
+            limits: {
+              x: {
+                min: 0,
+                max: lastIndex,
+                minRange: 14
+              }
+            },
+            pan: {
+              enabled: true,
+              mode: "x",
+              threshold: 2
+            },
+            zoom: {
+              wheel: {
+                enabled: true,
+                speed: 0.1
+              },
+              pinch: {
+                enabled: true
+              },
+              drag: {
+                enabled: false
+              },
+              mode: "x"
+            }
+          }
+        }
+      }
+    });
+
+    document.getElementById("fearGreedPanLeft").onclick = () => fearGreedChart.pan({ x: -150 }, undefined, "none");
+    document.getElementById("fearGreedPanRight").onclick = () => fearGreedChart.pan({ x: 150 }, undefined, "none");
+    document.getElementById("fearGreedZoomIn").onclick = () => fearGreedChart.zoom(1.25);
+    document.getElementById("fearGreedZoomOut").onclick = () => fearGreedChart.zoom(0.8);
+    document.getElementById("fearGreedResetZoom").onclick = () => fearGreedChart.resetZoom();
+
+    status.textContent =
+      "Данные обновлены: " + dates[dates.length - 1] +
+      ". Показан последний год. Колесо мыши — масштаб, зажать левую кнопку и тянуть — сдвиг.";
+
+  } catch (error) {
+    status.textContent =
+      "Данные Fear & Greed Index пока не загружены. Проверьте, что файл data/fear-greed.json создан и GitHub Action выполнился успешно.";
+  }
+}
+
 loadSupplyInProfit();
 loadUtxoInProfit();
 loadSthSopr();
 loadNupl();
 loadMvrvZScore();
 loadLthSopr();
+loadFearGreed();
 </script>
 </body>
 </html>
