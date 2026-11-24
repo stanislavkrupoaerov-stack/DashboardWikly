@@ -28,11 +28,10 @@ METRICS = [
         "name": "Number of UTXOs in Profit %",
         "output": "data/utxo-in-profit.json",
         "endpoints": [
-            "utxo-in-profit",
-            "utxos-in-profit",
-            "utxo-profit"
+            "utxos-in-profit-pct"
         ],
         "value_keys": [
+            "utxosInProfitPct",
             "utxoInProfit",
             "utxoProfit",
             "utxosInProfit",
@@ -44,45 +43,44 @@ METRICS = [
         "name": "Short-Term Holder SOPR",
         "output": "data/sth-sopr.json",
         "endpoints": [
-            "sopr-sth",
-            "sth-sopr",
-            "sopr-short-term-holder"
+            "sth-sopr"
         ],
         "value_keys": [
-            "soprSth",
-            "sthSopr",
-            "soprShortTermHolder",
-            "shortTermHolderSopr"
+            "sthSopr"
         ],
         "conversion": "direct"
     },
     {
         "name": "NUPL",
         "output": "data/nupl.json",
-        "endpoints": ["nupl"],
-        "value_keys": ["nupl"],
+        "endpoints": [
+            "nupl"
+        ],
+        "value_keys": [
+            "nupl"
+        ],
         "conversion": "direct"
     },
     {
         "name": "MVRV Z-Score",
         "output": "data/mvrv-zscore.json",
-        "endpoints": ["mvrv-zscore"],
-        "value_keys": ["mvrvZscore", "mvrvZScore"],
+        "endpoints": [
+            "mvrv-zscore"
+        ],
+        "value_keys": [
+            "mvrvZscore",
+            "mvrvZScore"
+        ],
         "conversion": "direct"
     },
     {
         "name": "Long-Term Holder SOPR",
         "output": "data/lth-sopr.json",
         "endpoints": [
-            "sopr-lth",
-            "lth-sopr",
-            "sopr-long-term-holder"
+            "lth-sopr"
         ],
         "value_keys": [
-            "soprLth",
-            "lthSopr",
-            "soprLongTermHolder",
-            "longTermHolderSopr"
+            "lthSopr"
         ],
         "conversion": "direct"
     }
