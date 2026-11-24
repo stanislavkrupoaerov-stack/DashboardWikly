@@ -89,10 +89,64 @@
       padding: 20px 0 40px;
     }
     .loading { color: #93a0b4; }
+
+    #marketSummary { border-top: 4px solid #64748b; }
+    #marketSummaryValue { font-size: clamp(24px, 4vw, 36px); font-weight: bold; margin: 14px 0; overflow-wrap: anywhere; }
+    #marketSummaryCards { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin: 20px 0; }
+    #marketSummary .market-summary-card { background: #0f1522; border: 1px solid #202a3d; border-left: 4px solid var(--market-zone, #64748b); border-radius: 12px; padding: 16px; }
+    #marketSummary .market-summary-name { font-size: 14px; color: #b7c2d4; }
+    #marketSummary .market-summary-number { font-size: 26px; font-weight: bold; margin: 10px 0; }
+    #marketSummary .market-summary-zone { color: var(--market-zone, #b7c2d4); font-weight: bold; }
+    #marketSummary .market-summary-date { color: #93a0b4; font-size: 13px; margin-top: 10px; }
+    #marketSummaryCounts { display: flex; flex-wrap: wrap; gap: 10px; margin: 16px 0; }
+    #marketSummaryCounts span { padding: 8px 12px; border: 1px solid; border-radius: 10px; }
+    #marketSummaryText { line-height: 1.65; }
+    #marketSummary .market-summary-table { overflow-x: auto; margin: 20px 0; }
   </style>
 </head>
 <body>
   <div class="container">
+    <section class="panel" id="marketSummary" aria-labelledby="marketSummaryTitle">
+      <h2 id="marketSummaryTitle">Общий анализ рынка Bitcoin</h2>
+      <p class="subtitle">Объединение последних доступных значений семи метрик. Даты данных могут различаться.</p>
+      <div id="marketSummaryValue" role="status">Данные загружаются или часть данных недоступна.</div>
+      <div class="badge" id="marketSummaryBadge">Ожидание данных</div>
+      <p class="loading" id="marketSummaryStatus">Данные загружаются или часть данных недоступна.</p>
+      <div id="marketSummaryCards"></div>
+      <h3>Счётчик зон</h3>
+      <div id="marketSummaryCounts"></div>
+      <h3>Аналитический вывод</h3>
+      <div id="marketSummaryText">Общая оценка появится после загрузки всех семи метрик.</div>
+      <div class="market-summary-table">
+        <table>
+          <caption>Расшифровка цветов общего анализа</caption>
+          <thead><tr><th scope="col">Цвет</th><th scope="col">Аналитическая зона</th></tr></thead>
+          <tbody>
+            <tr><td style="color:#c084fc">Фиолетовый</td><td>Сильный страх / возможная капитуляция</td></tr>
+            <tr><td style="color:#4ade80">Зелёный</td><td>Страх / возможный откуп</td></tr>
+            <tr><td style="color:#60a5fa">Синий</td><td>Нейтрально</td></tr>
+            <tr><td style="color:#facc15">Жёлтый</td><td>Жадность / приближение к перегреву</td></tr>
+            <tr><td style="color:#f87171">Красный</td><td>Сильная жадность / перегрев</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="subtitle">Правила классификации заданы для этого аналитического блока, а не являются доказательством дна или вершины. У каждой метрики один голос; большинство — не менее 4 из 7 в одной зоне. Метрики могут быть взаимосвязаны: семь голосов не означают семь независимых подтверждений. При неполных данных окончательная оценка не рассчитывается. Существующие блоки ниже сохраняют свои прежние подписи и правила границ.</p>
+      <details>
+        <summary>Точные границы зон общего анализа</summary>
+        <p>Supply in Profit и UTXO in Profit: [0; 20), [20; 50), [50; 80), [80; 95), [95; 100].</p>
+        <p>STH SOPR и LTH SOPR: ниже 0.90; [0.90; 0.95); [0.95; 1.00); [1.00; 1.05]; выше 1.05.</p>
+        <p>NUPL: ниже 0; [0; 0.25); [0.25; 0.50); [0.50; 0.75]; выше 0.75.</p>
+        <p>MVRV Z-Score: ниже 0.10; [0.10; 1.00); [1.00; 3.00); [3.00; 6.00]; выше 6.00.</p>
+        <p>Fear &amp; Greed Index: 0–24; 25–44; 45–55; 56–75; 76–100 (целые значения).</p>
+        <p>Зоны перечислены от фиолетовой к красной. Квадратная скобка включает границу, круглая — исключает.</p>
+      </details>
+      <div class="note">
+        <strong>Это аналитический инструмент, а не инвестиционная рекомендация.</strong>
+        Низкие значения не гарантируют дно, а высокие не гарантируют вершину.
+        Нет сигналов на покупку, продажу или удержание. Формулировка «возможный откуп» обозначает только название аналитической зоны, а не призыв к действию.
+      </div>
+    </section>
+
     <h1>BTC: % предложения в прибыли</h1>
     <p class="subtitle">
       Метрика показывает, какая доля Bitcoin-предложения сейчас находится в прибыли.
@@ -763,6 +817,143 @@
   </div>
 
 <script>
+
+const marketSummaryMetrics = [
+  { key: 'supply', name: 'Supply in Profit %', kind: 'percent', digits: 2 },
+  { key: 'utxo', name: 'Number of UTXOs in Profit %', kind: 'percent', digits: 2 },
+  { key: 'sth', name: 'Short-Term Holder SOPR', kind: 'sopr', digits: 4 },
+  { key: 'nupl', name: 'NUPL', kind: 'nupl', digits: 4 },
+  { key: 'mvrv', name: 'MVRV Z-Score', kind: 'mvrv', digits: 4 },
+  { key: 'lth', name: 'Long-Term Holder SOPR', kind: 'sopr', digits: 4 },
+  { key: 'fear', name: 'BTC Fear & Greed Index', kind: 'fear', digits: 0 }
+];
+const marketSummaryZones = [
+  { label: 'Сильный страх / возможная капитуляция', count: 'Капитуляция', color: '#c084fc' },
+  { label: 'Страх / возможный откуп', count: 'Страх / откуп', color: '#4ade80' },
+  { label: 'Нейтрально', count: 'Нейтрально', color: '#60a5fa' },
+  { label: 'Жадность / приближение к перегреву', count: 'Жадность', color: '#facc15' },
+  { label: 'Сильная жадность / перегрев', count: 'Перегрев', color: '#f87171' }
+];
+const marketSummaryData = new Map();
+let marketSummaryFinished = false;
+
+function marketSummaryCapture(key, rows) {
+  const row = rows[rows.length - 1];
+  if (!row || row.value === null || row.value === undefined ||
+      !['number', 'string'].includes(typeof row.value) || String(row.value).trim() === '' ||
+      typeof row.date !== 'string' || !Number.isFinite(Date.parse(row.date))) return;
+  const value = Number(row.value);
+  const metric = marketSummaryMetrics.find(item => item.key === key);
+  if (!metric || !Number.isFinite(value)) return;
+  if ((metric.kind === 'percent' || metric.kind === 'fear') && (value < 0 || value > 100)) return;
+  if (metric.kind === 'fear' && !Number.isInteger(value)) return;
+  if (metric.kind === 'sopr' && value < 0) return;
+  marketSummaryData.set(key, { value, date: row.date });
+}
+
+function marketSummaryZone(kind, value) {
+  if (kind === 'percent') return value < 20 ? 0 : value < 50 ? 1 : value < 80 ? 2 : value < 95 ? 3 : 4;
+  if (kind === 'sopr') return value < 0.90 ? 0 : value < 0.95 ? 1 : value < 1 ? 2 : value <= 1.05 ? 3 : 4;
+  if (kind === 'nupl') return value < 0 ? 0 : value < 0.25 ? 1 : value < 0.50 ? 2 : value <= 0.75 ? 3 : 4;
+  if (kind === 'mvrv') return value < 0.10 ? 0 : value < 1 ? 1 : value < 3 ? 2 : value <= 6 ? 3 : 4;
+  return value <= 24 ? 0 : value <= 44 ? 1 : value <= 55 ? 2 : value <= 75 ? 3 : 4;
+}
+
+function updateMarketSummary() {
+  const root = document.getElementById('marketSummary');
+  if (!root) return;
+  const cards = document.getElementById('marketSummaryCards');
+  const countsElement = document.getElementById('marketSummaryCounts');
+  const text = document.getElementById('marketSummaryText');
+  const headline = document.getElementById('marketSummaryValue');
+  const badge = document.getElementById('marketSummaryBadge');
+  const status = document.getElementById('marketSummaryStatus');
+  cards.replaceChildren();
+  countsElement.replaceChildren();
+  text.replaceChildren();
+  const groups = marketSummaryZones.map(() => []);
+  const dates = [];
+  marketSummaryMetrics.forEach(metric => {
+    const data = marketSummaryData.get(metric.key);
+    const card = document.createElement('article');
+    card.className = 'market-summary-card';
+    const name = document.createElement('div');
+    name.className = 'market-summary-name';
+    name.textContent = metric.name;
+    const number = document.createElement('div');
+    number.className = 'market-summary-number';
+    const zoneLabel = document.createElement('div');
+    zoneLabel.className = 'market-summary-zone';
+    const date = document.createElement('div');
+    date.className = 'market-summary-date';
+    if (data) {
+      const zoneIndex = marketSummaryZone(metric.kind, data.value);
+      const zone = marketSummaryZones[zoneIndex];
+      groups[zoneIndex].push(metric.name);
+      dates.push(data.date);
+      card.style.setProperty('--market-zone', zone.color);
+      number.textContent = data.value.toFixed(metric.digits) + (metric.kind === 'percent' ? '%' : '');
+      zoneLabel.textContent = zone.label;
+      date.textContent = 'Дата данных: ' + data.date;
+    } else {
+      number.textContent = '—';
+      zoneLabel.textContent = marketSummaryFinished ? 'Данные недоступны' : 'Загрузка данных';
+      date.textContent = 'Дата данных: —';
+    }
+    card.append(name, number, zoneLabel, date);
+    cards.append(card);
+  });
+  marketSummaryZones.forEach((zone, index) => {
+    const count = document.createElement('span');
+    count.style.color = zone.color;
+    count.textContent = zone.count + ': ' + groups[index].length;
+    countsElement.append(count);
+  });
+  const available = groups.reduce((sum, group) => sum + group.length, 0);
+  const complete = marketSummaryFinished && available === marketSummaryMetrics.length;
+  const winner = complete ? groups.findIndex(group => group.length >= 4) : -1;
+  let color = '#94a3b8';
+  const paragraph = document.createElement('p');
+  if (!complete) {
+    headline.textContent = 'Данные загружаются или часть данных недоступна.';
+    badge.textContent = 'Неполные данные';
+    status.textContent = 'Данные загружаются или часть данных недоступна. Доступно: ' + available + ' из 7. Счётчик учитывает только доступные значения.';
+    paragraph.textContent = 'Окончательная общая оценка не рассчитывается до получения всех семи метрик. Ниже приведена классификация только доступных значений.';
+  } else {
+    if (winner >= 0) {
+      color = marketSummaryZones[winner].color;
+      headline.textContent = 'Общее состояние рынка: ' + marketSummaryZones[winner].label;
+      badge.textContent = 'Большинство: ' + groups[winner].length + ' из 7';
+      const opposing = (groups[0].length + groups[1].length > 0) && (groups[3].length + groups[4].length > 0);
+      paragraph.textContent = 'По заданным правилам в одной зоне находятся ' + groups[winner].length + ' из 7 метрик. ' +
+        (opposing ? 'При этом часть показателей указывает на страх, а часть — на жадность или перегрев: сигналы неоднородны, несмотря на большинство. ' : '') +
+        'Это описание текущего набора данных, а не прогноз цены или подтверждение разворота.';
+    } else {
+      headline.textContent = 'Метрики дают смешанные сигналы. Рынок находится в неопределённой фазе.';
+      badge.textContent = 'Нет большинства';
+      paragraph.textContent = 'Ни одна зона не набрала минимум 4 из 7 голосов. Показатели распределены между разными зонами; однозначная общая оценка отсутствует. Это не следует автоматически считать нейтральным рынком.';
+    }
+    const timestamps = dates.map(date => Date.parse(date));
+    const oldest = dates[timestamps.indexOf(Math.min(...timestamps))];
+    const newest = dates[timestamps.indexOf(Math.max(...timestamps))];
+    status.textContent = 'Доступно: 7 из 7. Даты данных: ' + oldest + ' — ' + newest + '. ' +
+      (new Set(dates).size > 1 ? 'Даты различаются: это не единый синхронный срез рынка. ' : '') +
+      'Свежесть проверяйте по датам карточек: успешная загрузка не гарантирует актуальность данных.';
+  }
+  text.append(paragraph);
+  groups.forEach((names, index) => {
+    if (!names.length) return;
+    const explanation = document.createElement('p');
+    explanation.textContent = marketSummaryZones[index].label + ': ' + names.join(', ') + '. Классификация по заданным порогам.';
+    text.append(explanation);
+  });
+  root.style.borderTopColor = color;
+  headline.style.color = color;
+  badge.style.color = color;
+  badge.style.background = color + '18';
+  badge.style.border = '1px solid ' + color;
+}
+
 function getSupplyZone(value) {
   if (value >= 95) {
     return {
@@ -891,6 +1082,7 @@ async function loadSupplyInProfit() {
 
     const values = rows.map(row => Number(row.value));
     const dates = rows.map(row => row.date);
+    marketSummaryCapture("supply", rows);
     const current = values[values.length - 1];
     const value30 = values[values.length - 31] || values[0];
     const change30 = current - value30;
@@ -1019,6 +1211,7 @@ async function loadUtxoInProfit() {
 
     const values = rows.map(row => Number(row.value));
     const dates = rows.map(row => row.date);
+    marketSummaryCapture("utxo", rows);
     const current = values[values.length - 1];
     const value30 = values[values.length - 31] || values[0];
     const change30 = current - value30;
@@ -1147,6 +1340,7 @@ async function loadSthSopr() {
 
     const values = rows.map(row => Number(row.value));
     const dates = rows.map(row => row.date);
+    marketSummaryCapture("sth", rows);
     const current = values[values.length - 1];
     const value30 = values[values.length - 31] || values[0];
     const change30 = current - value30;
@@ -1305,6 +1499,7 @@ async function loadNupl() {
 
     const values = rows.map(row => Number(row.value));
     const dates = rows.map(row => row.date);
+    marketSummaryCapture("nupl", rows);
     const current = values[values.length - 1];
     const value30 = values[values.length - 31] || values[0];
     const change30 = current - value30;
@@ -1432,6 +1627,7 @@ async function loadMvrvZScore() {
 
     const values = rows.map(row => Number(row.value));
     const dates = rows.map(row => row.date);
+    marketSummaryCapture("mvrv", rows);
     const current = values[values.length - 1];
     const value30 = values[values.length - 31] || values[0];
     const change30 = current - value30;
@@ -1596,6 +1792,7 @@ async function loadLthSopr() {
 
     const values = rows.map(row => Number(row.value));
     const dates = rows.map(row => row.date);
+    marketSummaryCapture("lth", rows);
     const current = values[values.length - 1];
     const value30 = values[values.length - 31] || values[0];
     const change30 = current - value30;
@@ -1760,6 +1957,7 @@ async function loadFearGreed() {
 
     const values = rows.map(row => Number(row.value));
     const dates = rows.map(row => row.date);
+    marketSummaryCapture("fear", rows);
     const current = values[values.length - 1];
     const value30 = values[values.length - 31] || values[0];
     const change30 = current - value30;
@@ -1874,13 +2072,23 @@ async function loadFearGreed() {
   }
 }
 
-loadSupplyInProfit();
-loadUtxoInProfit();
-loadSthSopr();
-loadNupl();
-loadMvrvZScore();
-loadLthSopr();
-loadFearGreed();
+updateMarketSummary();
+Promise.allSettled([
+  loadSupplyInProfit(),
+  loadUtxoInProfit(),
+  loadSthSopr(),
+  loadNupl(),
+  loadMvrvZScore(),
+  loadLthSopr(),
+  loadFearGreed()
+]).then(() => {
+  marketSummaryFinished = true;
+  updateMarketSummary();
+}).catch(error => {
+  console.error('Ошибка общего анализа рынка:', error);
+  document.getElementById('marketSummaryStatus').textContent =
+    'Данные загружаются или часть данных недоступна.';
+});
 </script>
 </body>
 </html>
