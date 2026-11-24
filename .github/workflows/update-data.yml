@@ -21,35 +21,10 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Обновить данные Supply in Profit %
+      - name: Обновить данные Bitcoin-метрик
         env:
           BITCOIN_DATA_API_TOKEN: ${{ secrets.BITCOIN_DATA_API_TOKEN }}
-        run: python scripts/update_supply_in_profit.py
-
-      - name: Обновить данные Number of UTXOs in Profit %
-        env:
-          BITCOIN_DATA_API_TOKEN: ${{ secrets.BITCOIN_DATA_API_TOKEN }}
-        run: python scripts/update_utxos_in_profit.py
-
-      - name: Обновить данные Short-Term Holder SOPR
-        env:
-          BITCOIN_DATA_API_TOKEN: ${{ secrets.BITCOIN_DATA_API_TOKEN }}
-        run: python scripts/update_short_term_holder_sopr.py
-
-      - name: Обновить данные NUPL
-        env:
-          BITCOIN_DATA_API_TOKEN: ${{ secrets.BITCOIN_DATA_API_TOKEN }}
-        run: python scripts/update_nupl.py
-
-      - name: Обновить данные MVRV Z-Score
-        env:
-          BITCOIN_DATA_API_TOKEN: ${{ secrets.BITCOIN_DATA_API_TOKEN }}
-        run: python scripts/update_mvrv_z_score.py
-
-      - name: Обновить данные Long-Term Holder SOPR
-        env:
-          BITCOIN_DATA_API_TOKEN: ${{ secrets.BITCOIN_DATA_API_TOKEN }}
-        run: python scripts/update_long_term_holder_sopr.py
+        run: python scripts/update_data.py
 
       - name: Пауза перед Fear & Greed Index
         run: sleep 20
