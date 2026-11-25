@@ -2,11 +2,16 @@ name: Update BTC Supply in Profit
 
 on:
   schedule:
-    - cron: "0 6 * * *"
+    # 06:05 UTC = 09:05 МСК ежедневно
+    - cron: "5 6 * * *"
   workflow_dispatch:
 
 permissions:
   contents: write
+
+concurrency:
+  group: update-btc-supply-in-profit
+  cancel-in-progress: true
 
 jobs:
   update-data:
@@ -15,6 +20,12 @@ jobs:
     steps:
       - name: Получить код репозитория
         uses: actions/checkout@v4
+
+      - name: Диагностика запуска
+        run: |
+          echo "Время запуска UTC: $(date -u)"
+          echo "Ветка: $GITHUB_REF_NAME"
+          git log -1 --format='Последний коммит: %h %ad %s' --date=iso
 
       - name: Установить Python
         uses: actions/setup-python@v5
@@ -31,6 +42,12 @@ jobs:
 
       - name: Обновить данные Fear & Greed Index
         run: python scripts/update_fear_greed.py
+
+      - name: Проверить изменения
+        run: |
+          echo "Изменённые файлы:"
+          git status --short
+          git diff --stat
 
       - name: Зафиксировать обновлённые данные
         run: |
